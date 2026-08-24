@@ -1,61 +1,60 @@
 import {
   AssistantRuntimeProvider,
   WebSpeechDictationAdapter,
-  useLocalRuntime,
-  type ChatModelAdapter,
 } from "@assistant-ui/react";
-import { useEffect, useMemo, useRef } from "react";
+import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
+import { lastAssistantMessageIsCompleteWithApprovalResponses } from "ai";
+import { useMemo } from "react";
 import { Thread } from "@/components/thread";
+import { getAiRuntime, getAiSelection } from "@/features/ai/api";
+import { ComposerModelPicker } from "@/features/ai/ComposerModelPicker";
 import { ComposerProjectPicker } from "./ComposerProjectPicker";
 
 type ProjectAssistantProps = {
   projectName: string;
+  projectPath: string;
   threadId?: string;
-  createThread(): Promise<void>;
 };
 
-export function ProjectAssistant({ projectName, threadId, createThread }: ProjectAssistantProps) {
-  const hasProjectThread = useRef(Boolean(threadId));
-
-  useEffect(() => {
-    if (threadId) hasProjectThread.current = true;
-  }, [threadId]);
-
-  const modelAdapter = useMemo<ChatModelAdapter>(() => ({
-    async run({ abortSignal }) {
-      if (!hasProjectThread.current) {
-        hasProjectThread.current = true;
+export function ProjectAssistant({ projectName, projectPath, threadId }: ProjectAssistantProps) {
+  const transport = useMemo(() => new AssistantChatTransport({
+    api: "http://127.0.0.1/pending/chat",
+    body: () => {
+      const selection = getAiSelection(projectPath);
+      return { projectName, projectPath, conversationId: threadId ?? `draft:${projectPath}`, connectionId: selection?.connectionId, modelId: selection?.modelId };
+    },
+    fetch: async (_url, init) => {
+      const runtimeInfo = await getAiRuntime();
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
         try {
-          await createThread();
+          return await fetch(runtimeInfo.endpoint, {
+            ...init,
+            headers: { ...Object.fromEntries(new Headers(init?.headers)), authorization: `Bearer ${runtimeInfo.token}` },
+          });
         } catch (error) {
-          hasProjectThread.current = false;
-          throw error;
+          lastError = error;
+          await new Promise((resolve) => window.setTimeout(resolve, 100 * (attempt + 1)));
         }
       }
-
-      if (abortSignal.aborted) return { content: [] };
-
-      return {
-        content: [{
-          type: "text",
-          text: `The assistant interface is ready for **${projectName}**. Connect your model to the project runtime to begin generating AI responses.`,
-        }],
-      };
+      throw lastError;
     },
-  }), [createThread, projectName]);
+  }), [projectName, projectPath, threadId]);
 
   const dictationAdapter = useMemo(() => new WebSpeechDictationAdapter({
     continuous: true,
     interimResults: true,
   }), []);
 
-  const runtime = useLocalRuntime(modelAdapter, {
+  const runtime = useChatRuntime({
+    transport,
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
     adapters: { dictation: dictationAdapter },
   });
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <Thread projectPicker={<ComposerProjectPicker />} />
+      <Thread projectPicker={<ComposerProjectPicker />} modelPicker={<ComposerModelPicker projectPath={projectPath} />} />
     </AssistantRuntimeProvider>
   );
 }

@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+sidecar/dist
+src-tauri/binaries/star-ai-*
 dist
 dist-ssr
 *.local

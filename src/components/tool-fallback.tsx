@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { respondAiPermission } from "@/features/ai/api";
 
 const ANIMATION_DURATION = 200;
 
@@ -270,6 +271,38 @@ function ToolFallbackResult({
       <pre className="aui-tool-fallback-result-content bg-muted/50 text-foreground/90 mt-1 rounded-md p-2.5 text-xs whitespace-pre-wrap">
         {typeof result === "string" ? result : JSON.stringify(result, null, 2)}
       </pre>
+    </div>
+  );
+}
+
+type AcpPermissionInput = {
+  title?: string;
+  options?: Array<{ optionId: string; name: string; kind: string }>;
+};
+
+function AcpPermission({ permissionId, argsText, running }: { permissionId: string; argsText?: string; running: boolean }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string>();
+  let input: AcpPermissionInput = {};
+  try { input = argsText ? JSON.parse(argsText) as AcpPermissionInput : {}; } catch { input = {}; }
+  if (!running || submitted) return null;
+  const respond = async (optionId: string) => {
+    setSubmitted(true);
+    setError(undefined);
+    try { await respondAiPermission(permissionId, optionId); }
+    catch (reason) { setSubmitted(false); setError(reason instanceof Error ? reason.message : String(reason)); }
+  };
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
+      <p className="font-medium">{input.title ?? "Permission required"}</p>
+      <div className="flex flex-wrap gap-2">
+        {input.options?.map((option) => (
+          <Button key={option.optionId} size="sm" variant={option.kind.startsWith("allow") ? "default" : "outline"} onClick={() => void respond(option.optionId)}>
+            {option.name}
+          </Button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }
@@ -547,6 +580,7 @@ function ToolFallbackApproval({
 }
 
 const ToolFallbackImpl: ToolCallMessagePartComponent = ({
+  toolCallId,
   toolName,
   argsText,
   result,
@@ -559,7 +593,8 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
 }) => {
   const isCancelled =
     status?.type === "incomplete" && status.reason === "cancelled";
-  const isRequiresAction = status?.type === "requires-action";
+  const isAcpPermission = toolName === "acp_permission";
+  const isRequiresAction = status?.type === "requires-action" || (isAcpPermission && status?.type === "running");
   const shouldRenderApproval =
     isRequiresAction && offersInterruptAction(status, approval, interrupt);
 
@@ -576,11 +611,12 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
       <ToolFallbackTrigger toolName={toolName} status={status} />
       <ToolFallbackContent>
         <ToolFallbackError status={status} />
-        <ToolFallbackArgs
+        {!isAcpPermission && <ToolFallbackArgs
           argsText={argsText}
           className={cn(isCancelled && "opacity-60")}
-        />
-        {shouldRenderApproval && (
+        />}
+        {isAcpPermission && <AcpPermission permissionId={toolCallId} argsText={argsText} running={status?.type === "running"} />}
+        {!isAcpPermission && shouldRenderApproval && (
           <ToolFallbackApproval
             addResult={addResult}
             resume={resume}

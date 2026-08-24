@@ -1,9 +1,18 @@
 import { Folder, Plus } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { ProjectAssistant } from "./ProjectAssistant";
 import { useProjects } from "./ProjectProvider";
 
 export function ProjectsView() {
   const { projects, selectedProject, selectedThread, loading, error, addProject, createThread } = useProjects();
+  const initializingProject = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!loading && selectedProject && !selectedThread && initializingProject.current !== selectedProject.id) {
+      initializingProject.current = selectedProject.id;
+      void createThread();
+    }
+  }, [createThread, loading, selectedProject, selectedThread]);
 
   if (loading) return <section className="project-empty"><p>Loading projects…</p></section>;
 
@@ -24,8 +33,8 @@ export function ProjectsView() {
       {selectedProject && (
         <ProjectAssistant
           key={`${selectedProject.id}:${selectedThread?.id ?? "draft"}`}
-          createThread={createThread}
           projectName={selectedProject.name}
+          projectPath={selectedProject.rootPath}
           threadId={selectedThread?.id}
         />
       )}

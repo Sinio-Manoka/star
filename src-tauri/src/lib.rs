@@ -12,6 +12,7 @@ use std::{
 use tauri::{AppHandle, Emitter, State};
 
 mod windows_titlebar;
+mod ai_runtime;
 
 const MAX_PROJECT_ENTRIES: usize = 5_000;
 const MAX_PROJECT_DEPTH: usize = 20;
@@ -252,8 +253,14 @@ fn terminal_stop(state: State<'_, TerminalState>, session_id: u64) -> Result<(),
 pub fn run() {
     tauri::Builder::default()
         .manage(windows_titlebar::NativeTitlebarState::default())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             use tauri::Manager;
+            let ai_state = ai_runtime::AiState::load(app.handle())?;
+            app.manage(ai_state);
+            if let Err(error) = ai_runtime::restart(app.handle(), &app.state::<ai_runtime::AiState>()) {
+                eprintln!("AI runtime unavailable: {error}");
+            }
             if let Some(window) = app.get_webview_window("main") {
                 let status = windows_titlebar::install(&window);
                 if let Ok(mut stored) = app
@@ -274,6 +281,11 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            ai_runtime::ai_runtime_info,
+            ai_runtime::ai_list_connections,
+            ai_runtime::ai_save_connection,
+            ai_runtime::ai_remove_connection,
+            ai_runtime::ai_detect_clis,
             scan_project,
             windows_titlebar::native_titlebar_status,
             terminal_start,

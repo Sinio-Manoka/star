@@ -116,7 +116,7 @@ export function ProjectSidebar({ onOpenProject }: ProjectSidebarProps) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="outline" size="xs" className="project-picker-trigger w-full justify-between" />}>
+                  <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="project-picker-trigger w-full justify-between" />}>
                     <span className="min-w-0 truncate">{selectedProject?.name ?? "Choose a project"}</span>
                     <ChevronDown data-icon="inline-end" />
                   </DropdownMenuTrigger>

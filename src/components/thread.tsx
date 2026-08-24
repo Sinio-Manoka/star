@@ -90,6 +90,7 @@ export type ThreadComponents = {
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
   projectPicker?: ReactNode;
+  modelPicker?: ReactNode;
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
@@ -134,19 +135,21 @@ const ThreadHistorySkeleton: FC = () => (
 export const Thread: FC<ThreadProps> = ({
   components = EMPTY_COMPONENTS,
   projectPicker,
+  modelPicker,
 }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} projectPicker={projectPicker} />
+      <ThreadRoot isEmpty={isEmpty} projectPicker={projectPicker} modelPicker={modelPicker} />
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode }> = ({
+const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({
   isEmpty,
   projectPicker,
+  modelPicker,
 }) => {
   const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
 
@@ -154,10 +157,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode }> = ({
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
       style={{
-        ["--thread-max-width" as string]: "38rem",
+        ["--thread-max-width" as string]: "36rem",
         ["--composer-bg" as string]: "var(--color-card)",
-        ["--composer-radius" as string]: "1.15rem",
-        ["--composer-padding" as string]: "6px",
+        ["--composer-radius" as string]: "1rem",
+        ["--composer-padding" as string]: "5px",
       }}
     >
       <ThreadPrimitive.Viewport
@@ -196,7 +199,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode }> = ({
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
-            <Composer projectPicker={projectPicker} />
+            <Composer projectPicker={projectPicker} modelPicker={modelPicker} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>
@@ -252,10 +255,10 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
-const Composer: FC<{ projectPicker?: ReactNode }> = ({ projectPicker }) => {
+const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1.5 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
+      <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
                         <div className="aui-composer-dictation-status bg-muted text-muted-foreground flex min-h-7 items-center gap-2 rounded-lg px-2.5 text-xs" role="status" aria-live="polite">
                           <span className="relative flex size-2" aria-hidden="true">
                             <span className="bg-destructive absolute inline-flex size-full animate-ping rounded-full opacity-60" />
@@ -271,17 +274,18 @@ const Composer: FC<{ projectPicker?: ReactNode }> = ({ projectPicker }) => {
                       autoFocus
                       enterKeyHint="send"
                       aria-label="Message input"
-                    /><ComposerAction projectPicker={projectPicker} /></ComposerPrimitive.AttachmentDropzone>
+                    /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} /></ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC<{ projectPicker?: ReactNode }> = ({ projectPicker }) => {
+const ComposerAction: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-1">
         <ComposerAddAttachment />
         {projectPicker}
+        {modelPicker}
       </div>
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>

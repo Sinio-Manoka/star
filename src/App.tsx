@@ -9,6 +9,7 @@ import { SidebarProvider } from "./components/ui/sidebar";
 import { ProjectSidebar } from "./features/projects/ProjectSidebar";
 import { BrainBaseView, EditorBaseView, ProjectsView } from "./features/projects/ProjectViews";
 import { useProjects } from "./features/projects/ProjectProvider";
+import { AiSettings } from "./features/ai/AiSettings";
 
 type Tab = "projects" | "editor" | "brain";
 
@@ -25,7 +26,7 @@ function initialTerminalHeight() {
 
 function initialProjectWidth() {
   const saved = Number(localStorage.getItem("star.project-rail-width"));
-  return Number.isFinite(saved) && saved >= 180 ? saved : 216;
+  return Number.isFinite(saved) && saved >= 220 ? saved : 248;
 }
 
 export default function App() {
@@ -150,7 +151,7 @@ export default function App() {
               onClick={terminalOpen ? closeTerminal : openTerminal}
               onPointerEnter={() => setTerminalStarted(true)}
               side="top"
-              size="icon-sm"
+              size="icon"
               tooltip={terminalOpen ? "Close terminal" : "Open terminal"}
               variant="outline"
             >
@@ -162,7 +163,7 @@ export default function App() {
                 className="project-navigation-control"
                 onClick={() => setProjectSidebarOpen((open) => !open)}
                 side="left"
-                size="icon-sm"
+                size="icon"
                 tooltip={projectSidebarOpen ? "Close chats" : "Open chats"}
                 variant="outline"
               >
@@ -181,14 +182,14 @@ export default function App() {
             collapsible
             collapsedSize={0}
             defaultSize={initialProjectWidth()}
-            minSize={180}
+            minSize={220}
             maxSize="55%"
             groupResizeBehavior="preserve-pixel-size"
             onResize={({ inPixels }) => {
               if (activeTab !== "projects") return;
               const open = inPixels > 1;
               setProjectSidebarOpen(open);
-              if (inPixels >= 180) {
+              if (inPixels >= 220) {
                 localStorage.setItem("star.project-rail-width", String(Math.round(inPixels)));
               }
             }}
@@ -201,18 +202,19 @@ export default function App() {
           className="settings-control"
           onClick={() => setSettingsOpen(true)}
           side="right"
-          size="icon-sm"
+          size="icon"
           tooltip="Settings"
           variant="outline"
         >
           <Settings />
         </TooltipIconButton>
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Settings</DialogTitle>
-              <DialogDescription>Application preferences will appear here as features become configurable.</DialogDescription>
+          <DialogContent className="grid h-[min(900px,calc(100vh-1rem))] grid-rows-[minmax(0,1fr)] overflow-hidden p-0 sm:max-w-[min(1280px,calc(100vw-2rem))]">
+            <DialogHeader className="sr-only">
+              <DialogTitle>AI workspace settings</DialogTitle>
+              <DialogDescription>Connect model providers and coding agents, then choose a model from each project chat.</DialogDescription>
             </DialogHeader>
+            <AiSettings />
           </DialogContent>
         </Dialog>
       </main>
