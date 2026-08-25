@@ -157,10 +157,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
       style={{
-        ["--thread-max-width" as string]: "36rem",
+        ["--thread-max-width" as string]: "40rem",
         ["--composer-bg" as string]: "var(--color-card)",
-        ["--composer-radius" as string]: "1rem",
-        ["--composer-padding" as string]: "5px",
+        ["--composer-radius" as string]: "0.75rem",
+        ["--composer-padding" as string]: "12px",
       }}
     >
       <ThreadPrimitive.Viewport
@@ -229,8 +229,8 @@ const ThreadScrollToBottom: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-4 text-center">
-      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-xl font-medium tracking-tight duration-200">
+    <div className="aui-thread-welcome-root mb-8 flex flex-col items-center px-4 text-center">
+      <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-3xl font-semibold tracking-tight duration-200">
         How can I help you today?
       </h1>
     </div>
@@ -269,7 +269,7 @@ const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ 
                         </div>
                       </AuiIf><ComposerPrimitive.Input
                       placeholder="Send a message..."
-                      className="aui-composer-input caret-primary placeholder:text-muted-foreground/60 max-h-40 min-h-8 w-full resize-none bg-transparent px-2 py-0.5 text-sm leading-5 outline-none"
+                      className="aui-composer-input caret-primary placeholder:text-muted-foreground/60 max-h-60 min-h-12 w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 outline-none"
                       rows={1}
                       autoFocus
                       enterKeyHint="send"
@@ -282,7 +282,7 @@ const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ 
 const ComposerAction: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1.5">
         <ComposerAddAttachment />
         {projectPicker}
         {modelPicker}

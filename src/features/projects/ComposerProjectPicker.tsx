@@ -21,7 +21,7 @@ export function ComposerProjectPicker() {
           <Button
             variant="ghost"
             size="sm"
-            className="composer-project-picker max-w-48 rounded-full px-3"
+            className="composer-project-picker h-9 max-w-48 gap-1.5 rounded-full px-3.5 text-sm"
             aria-label={`Current project: ${selectedProject?.name ?? "None"}`}
           />
         }

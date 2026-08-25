@@ -87,7 +87,7 @@ export function ComposerModelPicker({ projectPath }: { projectPath: string }) {
 
   return (
     <ModelSelector.Root models={modelOptions} value={modelId} onValueChange={chooseModel} open={open} onOpenChange={setOpen}>
-      <ModelSelector.Trigger variant="ghost" size="sm" className="composer-model-picker max-w-44 rounded-full" aria-label={`Model: ${modelOptions.find((model) => model.id === modelId)?.name ?? "Choose model"}`}>
+      <ModelSelector.Trigger variant="ghost" size="sm" className="composer-model-picker h-9 max-w-44 gap-1.5 rounded-full px-3.5 text-sm" aria-label={`Model: ${modelOptions.find((model) => model.id === modelId)?.name ?? "Choose model"}`}>
         <ModelSelector.Value placeholder={loading ? "Loading models…" : "Choose model"} />
       </ModelSelector.Trigger>
       <ModelSelector.Content side="top" align="start" className="w-80" searchable>

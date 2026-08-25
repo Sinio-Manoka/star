@@ -33,7 +33,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -139,7 +139,6 @@ button { font: inherit; }
 .project-chat-list [data-slot="sidebar-menu-button"] {
   position: relative;
   height: 34px;
-  border-radius: 8px;
   background: transparent;
   color: #8b8b92;
   font-size: 13px;
@@ -168,7 +167,6 @@ button { font: inherit; }
   bottom: 3px;
   left: -7px;
   width: 2px;
-  border-radius: 999px;
   background: var(--conversation-active);
   box-shadow:
     0 0 5px var(--conversation-active),
@@ -213,7 +211,6 @@ button { font: inherit; }
   bottom: 0;
   left: 3px;
   width: 1px;
-  border-radius: 999px;
   background: #29292e;
   content: "";
   opacity: .8;
@@ -272,7 +269,6 @@ button { font: inherit; }
   position: absolute;
   inset: 8px auto 8px 2px;
   width: 1px;
-  border-radius: 999px;
   background: transparent;
   content: "";
   transition: background 140ms ease, box-shadow 140ms ease;
@@ -339,7 +335,6 @@ button { font: inherit; }
 .base-view > header button {
   padding: 8px 12px;
   border: 1px solid #29292e;
-  border-radius: 7px;
   background: #151518;
   color: #aaaab0;
   font-size: 13px;
@@ -364,7 +359,6 @@ button { font: inherit; }
   gap: 3px;
   padding: 9px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
   background: transparent;
   color: #b8b8bd;
   text-align: left;
@@ -430,7 +424,6 @@ button { font: inherit; }
   margin-bottom: 12px;
   place-items: center;
   border: 1px solid #27272c;
-  border-radius: 10px;
   background: #131316;
   color: #a2a2a9;
 }
@@ -472,7 +465,6 @@ button { font: inherit; }
   gap: 6px;
   padding: 0 14px;
   border: 1px solid #303036;
-  border-radius: 8px;
   background: #1a1a1e;
   color: #d0d0d5;
   font-size: 13px;
@@ -520,7 +512,6 @@ button { font: inherit; }
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 7px;
   background: transparent;
   color: #6d6d74;
   cursor: pointer;
@@ -565,7 +556,6 @@ button { font: inherit; }
   height: 30px;
   padding: 0 27px 0 10px;
   border: 1px solid #29292e;
-  border-radius: 8px;
   appearance: none;
   background: #141417;
   color: #c9c9ce;
@@ -716,7 +706,6 @@ button { font: inherit; }
   min-width: 0;
   align-items: center;
   border: 1px solid transparent;
-  border-radius: 8px;
   background: transparent;
   color: #65656c;
 }
@@ -770,7 +759,6 @@ button { font: inherit; }
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 5px;
   background: transparent;
   color: #5d5d64;
   cursor: pointer;
@@ -817,7 +805,6 @@ button { font: inherit; }
   gap: 1px;
   padding: 2px;
   border: 1px solid #232327;
-  border-radius: 8px;
   background: #121214;
 }
 
@@ -827,7 +814,6 @@ button { font: inherit; }
   left: 2px;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
   background: #222226;
   content: "";
   transform: translateX(calc(var(--active-index) * 31px));
@@ -843,7 +829,6 @@ button { font: inherit; }
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
   background: transparent;
   color: #68686f;
   cursor: pointer;
@@ -861,7 +846,6 @@ button { font: inherit; }
   left: 50%;
   padding: 4px 7px;
   border: 1px solid #29292e;
-  border-radius: 6px;
   background: #171719;
   box-shadow: 0 4px 12px #0006;
   color: #c9c9ce;
@@ -947,7 +931,6 @@ button { font: inherit; }
   right: 10px;
   left: 10px;
   height: 2px;
-  border-radius: 999px;
   background: transparent;
   content: "";
   pointer-events: none;
@@ -960,7 +943,6 @@ button { font: inherit; }
   left: var(--divider-x, 50%);
   width: 150px;
   height: 4px;
-  border-radius: 999px;
   background: linear-gradient(90deg, transparent, #d8d8e0b8 50%, transparent);
   box-shadow: 0 0 8px #d8d8e04d;
   content: "";
@@ -1065,7 +1047,6 @@ button { font: inherit; }
 .ai-settings-nav [data-slot="tabs-trigger"] {
   min-height: 36px;
   padding-inline: 10px;
-  border-radius: 9px;
 }
 
 .ai-settings-nav [data-slot="tabs-trigger"][data-active] {
@@ -1087,7 +1068,6 @@ button { font: inherit; }
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 9px;
   background: var(--muted);
   color: var(--foreground);
 }
@@ -1101,7 +1081,6 @@ button { font: inherit; }
 
 .ai-settings-model-trigger {
   justify-content: flex-start;
-  border-radius: 8px;
 }
 
 .ai-settings-model-trigger > svg:last-child {
@@ -1225,6 +1204,11 @@ button { font: inherit; }
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
+  }
   * {
     @apply border-border outline-ring/50;
   }
