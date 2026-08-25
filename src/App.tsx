@@ -1,5 +1,5 @@
 import { Brain, Code2, Folder, PanelBottomClose, PanelRightClose, PanelRightOpen, Settings, SquareTerminal } from "lucide-react";
-import { useEffect, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { usePanelRef } from "react-resizable-panels";
 import { preloadTerminal, TerminalPanel } from "./components/TerminalPanel";
 import { TooltipIconButton } from "./components/tooltip-icon-button";
@@ -13,6 +13,7 @@ import { useProjects } from "./features/projects/ProjectProvider";
 import { AiSettings } from "./features/ai/AiSettings";
 import { ThemeColorPicker } from "./features/themes/ThemeColorPicker";
 import { ThemeSettings } from "./features/themes/ThemeSettings";
+import { WindowControls } from "./components/WindowControls";
 
 type Tab = "projects" | "editor" | "brain";
 
@@ -41,6 +42,7 @@ export default function App() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [terminalStarted, setTerminalStarted] = useState(false);
   const [terminalHeight, setTerminalHeight] = useState(0);
+  const mainRef = useRef<HTMLElement>(null);
   const terminalPanelRef = usePanelRef();
   const projectPanelRef = usePanelRef();
   const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
@@ -61,9 +63,12 @@ export default function App() {
   const openTerminal = () => {
     setTerminalStarted(true);
     setTerminalOpen(true);
+    const h = initialTerminalHeight();
+    setTerminalHeight(h);
+    mainRef.current?.style.setProperty("--terminal-height", `${h}px`);
     requestAnimationFrame(() => {
       terminalPanelRef.current?.expand();
-      terminalPanelRef.current?.resize(initialTerminalHeight());
+      terminalPanelRef.current?.resize(h);
     });
   };
 
@@ -81,28 +86,32 @@ export default function App() {
       style={{ "--sidebar-width": "15rem" } as CSSProperties}
     >
       <main
+        ref={mainRef}
         className="app-shell"
         style={{ "--terminal-height": `${terminalHeight}px` } as CSSProperties}
       >
-        <header className="app-topbar" data-tauri-drag-region>
-          <nav className="top-tabs" aria-label="Main navigation" style={{ "--active-index": activeIndex } as CSSProperties}>
-            {tabs.map((tab) => {
-              const label = tab.id[0].toUpperCase() + tab.id.slice(1);
-              return (
-                <button
-                  aria-label={label}
-                  aria-pressed={activeTab === tab.id}
-                  className={activeTab === tab.id ? "active" : ""}
-                  data-tooltip={label}
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  title={label}
-                >
-                  {tab.icon}
-                </button>
-              );
-            })}
-          </nav>
+        <header className="app-topbar">
+          <div data-tauri-drag-region className="app-topbar-drag">
+            <nav className="top-tabs" aria-label="Main navigation" style={{ "--active-index": activeIndex } as CSSProperties}>
+              {tabs.map((tab) => {
+                const label = tab.id[0].toUpperCase() + tab.id.slice(1);
+                return (
+                  <button
+                    aria-label={label}
+                    aria-pressed={activeTab === tab.id}
+                    className={activeTab === tab.id ? "active" : ""}
+                    data-tooltip={label}
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    title={label}
+                  >
+                    {tab.icon}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+          <WindowControls />
         </header>
 
         <ResizablePanelGroup className="workspace-row" orientation="horizontal">
@@ -134,11 +143,25 @@ export default function App() {
                 maxSize="60%"
                 groupResizeBehavior="preserve-pixel-size"
                 onResize={({ inPixels }) => {
+                  // Update the CSS variable directly on <main> during drag —
+                  // bypasses React's render cycle so the terminal-control
+                  // button (positioned with calc(var(--terminal-height) + 12px))
+                  // tracks the divider in real time instead of lagging.
+                  mainRef.current?.style.setProperty(
+                    "--terminal-height",
+                    `${Math.max(0, inPixels)}px`,
+                  );
+                  // Keep `terminalOpen` in sync (boolean — cheap to re-render).
                   const isOpen = inPixels > 1;
-                  setTerminalOpen(isOpen);
-                  setTerminalHeight(Math.max(0, inPixels));
+                  if (isOpen !== terminalOpen) setTerminalOpen(isOpen);
+                  // Persist size on every drag tick — localStorage writes are
+                  // synchronous disk IO but don't trigger React re-renders, so
+                  // there's no visible cost during the drag itself.
                   if (inPixels >= 90) {
-                    localStorage.setItem("star.terminal-height", String(Math.round(inPixels)));
+                    localStorage.setItem(
+                      "star.terminal-height",
+                      String(Math.round(inPixels)),
+                    );
                   }
                 }}
               >
@@ -151,7 +174,7 @@ export default function App() {
             </ResizablePanelGroup>
             <TooltipIconButton
               aria-label={terminalOpen ? "Close terminal" : "Open terminal"}
-              className="terminal-control"
+              className="floating-control terminal-control"
               onClick={terminalOpen ? closeTerminal : openTerminal}
               onPointerEnter={() => setTerminalStarted(true)}
               side="top"
@@ -203,7 +226,7 @@ export default function App() {
         </ResizablePanelGroup>
         <TooltipIconButton
           aria-label="Settings"
-          className="settings-control"
+          className="floating-control settings-control"
           onClick={() => setSettingsOpen(true)}
           side="right"
           size="icon"
@@ -213,7 +236,7 @@ export default function App() {
           <Settings />
         </TooltipIconButton>
         <div className="theme-switcher-control">
-          <ThemeColorPicker />
+          <ThemeColorPicker className="floating-control" />
         </div>
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
           <DialogContent className="grid h-[min(900px,calc(100vh-1rem))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-0 bg-background p-0 shadow-none ring-0 sm:max-w-[min(1280px,calc(100vw-2rem))]">

@@ -1,0 +1,77 @@
+/*
+ * Ayu Light — official palette from
+ * https://github.com/ayu-theme/ayu-colors/blob/master/themes/light.yaml
+ * Resolved via the canonical vscode-ayu JSON output.
+ * Activated by `<html data-theme="ayu-light">`.
+ */
+[data-theme="ayu-light"] {
+  /* Surface stack (editor.bg / surface.lift / surface.sunk) */
+  --background: #fcfcfc;
+  --foreground: #5c6166;
+  --card: #fcfcfc;
+  --card-foreground: #5c6166;
+  --popover: #fafafa;
+  --popover-foreground: #5c6166;
+
+  /* Accent (common.accent.tint / common.accent.on) */
+  --primary: #f29718;
+  --primary-foreground: #7e4b01;
+  --ring: #f29718;
+
+  /* Neutral surfaces (ui.bg / ui.line / ui.fg) */
+  --secondary: #f8f9fa;
+  --secondary-foreground: #828e9f;
+  --muted: #ebeef0;
+  --muted-foreground: #828e9f;
+
+  /* Secondary palette accent (palette.blue) */
+  --accent: #22a4e6;
+  --accent-foreground: #fcfcfc;
+
+  /* Status (common.error) */
+  --destructive: #e65050;
+
+  /* Borders (ui.line) */
+  --border: #6b7d8f;
+  --input: #6b7d8f;
+
+  /* Chart palette (palette.base colors) */
+  --chart-1: #22a4e6;  /* blue */
+  --chart-2: #86b300;  /* green */
+  --chart-3: #eba400;  /* yellow */
+  --chart-4: #a37acc;  /* purple */
+  --chart-5: #55b4d4;  /* indigo */
+
+  /* Sidebar (sideBar.*) */
+  --sidebar: #f8f9fa;
+  --sidebar-foreground: #5c6166;
+  --sidebar-primary: #f29718;
+  --sidebar-primary-foreground: #7e4b01;
+  --sidebar-accent: #fafafa;
+  --sidebar-accent-foreground: #5c6166;
+  --sidebar-border: #6b7d8f;
+  --sidebar-ring: #f29718;
+
+  /* Terminal ANSI palette (terminal.ansi*) */
+  --term-bg: #f8f9fa;
+  --term-fg: #5c6166;
+  --term-cursor: #f29718;
+  --term-cursor-accent: #fcfcfc;
+  --term-selection: #035bd626;
+  --term-black: #000000;
+  --term-bright-black: #686868;
+  --term-red: #f06b6c;
+  --term-bright-red: #f07171;
+  --term-green: #6cbf43;
+  --term-bright-green: #86b300;
+  --term-yellow: #e7a100;
+  --term-bright-yellow: #eba400;
+  --term-blue: #21a1e2;
+  --term-bright-blue: #22a4e6;
+  --term-magenta: #a176cb;
+  --term-bright-magenta: #a37acc;
+  --term-cyan: #4abc96;
+  --term-bright-cyan: #4cbf99;
+  --term-white: #c7c7c7;
+  --term-bright-white: #d1d1d1;
+}

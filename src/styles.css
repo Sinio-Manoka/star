@@ -7,7 +7,9 @@
 @import "./themes/dark.css";
 @import "./themes/midnight.css";
 @import "./themes/solar.css";
-@import "./themes/ayu.css";
+@import "./themes/ayu-light.css";
+@import "./themes/ayu-dark.css";
+@import "./themes/ayu-mirage.css";
 @import "./themes/catppuccin.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -39,6 +41,33 @@
 
   /* Active conversation bar — uses the theme accent. */
   --conversation-active: var(--primary);
+
+  /*
+   * Terminal ANSI palette — derived from the active theme so the ghostty-web
+   * terminal follows the IDE color scheme. Light versions of accents are
+   * produced by mixing toward the foreground.
+   */
+  --term-bg: var(--background);
+  --term-fg: var(--foreground);
+  --term-cursor: var(--foreground);
+  --term-cursor-accent: var(--background);
+  --term-selection: color-mix(in oklch, var(--foreground) 18%, transparent);
+  --term-black: var(--surface-3);
+  --term-bright-black: var(--text-faint);
+  --term-red: var(--destructive);
+  --term-bright-red: color-mix(in oklch, var(--destructive) 70%, var(--foreground));
+  --term-green: var(--chart-2);
+  --term-bright-green: color-mix(in oklch, var(--chart-2) 70%, var(--foreground));
+  --term-yellow: var(--chart-3);
+  --term-bright-yellow: color-mix(in oklch, var(--chart-3) 70%, var(--foreground));
+  --term-blue: var(--primary);
+  --term-bright-blue: color-mix(in oklch, var(--primary) 70%, var(--foreground));
+  --term-magenta: var(--chart-4);
+  --term-bright-magenta: color-mix(in oklch, var(--chart-4) 70%, var(--foreground));
+  --term-cyan: var(--chart-1);
+  --term-bright-cyan: color-mix(in oklch, var(--chart-1) 70%, var(--foreground));
+  --term-white: var(--surface-1);
+  --term-bright-white: var(--text-strong);
 }
 
 * { box-sizing: border-box; }
@@ -486,14 +515,24 @@ button { font: inherit; }
   display: flex;
   min-width: 0;
   align-items: center;
-  padding: 0 9px;
   background: var(--background);
   z-index: 10;
+  height: 46px;
 }
 
-.windows-native-titlebar .app-topbar {
-  padding-right: calc(var(--native-caption-inset, 138px) + 8px);
+.app-topbar-drag {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding: 0 9px;
+  height: 100%;
 }
+
+/*
+ * Note: native window decorations are disabled in `tauri.conf.json`, so the
+ * OS titlebar is never drawn. Window controls live in <WindowControls /> in
+ * the topbar, rendered platform-conventionally via `data-tauri-drag-region`.
+ */
 
 .project-controls {
   display: flex;
@@ -966,12 +1005,53 @@ button { font: inherit; }
   pointer-events: none;
 }
 
+/*
+ * Floating control buttons — shared visual treatment for terminal, settings,
+ * and the theme switcher trigger. Matches the polished popover-trigger feel
+ * of the theme switcher.
+ */
+.floating-control,
+.terminal-control,
+.settings-control,
+.theme-switcher-control,
+.project-navigation-control {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in oklch, var(--surface-2) 70%, transparent);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease,
+    transform 120ms ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.floating-control:hover,
+.terminal-control:hover,
+.settings-control:hover,
+.theme-switcher-control:hover,
+.project-navigation-control:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+}
+
+.floating-control:active,
+.terminal-control:active,
+.settings-control:active,
+.theme-switcher-control:active,
+.project-navigation-control:active {
+  background: var(--surface-3);
+  transform: translateY(0.5px);
+}
+
 .terminal-control {
   position: absolute;
   bottom: calc(var(--terminal-height) + 12px);
   right: 12px;
-  width: 32px;
-  height: 32px;
 }
 
 .project-navigation-control {
@@ -979,24 +1059,120 @@ button { font: inherit; }
   top: 12px;
   right: 12px;
   bottom: auto;
-  width: 32px;
-  height: 32px;
 }
 
 .settings-control {
   position: absolute;
   bottom: calc(var(--terminal-height) + 12px);
   left: 12px;
-  width: 32px;
-  height: 32px;
 }
 
 .theme-switcher-control {
   position: absolute;
   bottom: calc(var(--terminal-height) + 12px);
   left: 52px;
-  width: 32px;
-  height: 32px;
+}
+
+.window-controls,
+.window-control,
+.traffic-light {
+  -webkit-app-region: no-drag;
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.window-controls-other {
+  margin-left: auto;
+  padding-right: 4px;
+}
+
+.window-controls-mac {
+  margin-left: 0;
+  margin-right: auto;
+  padding-left: 4px;
+}
+
+.window-control {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  margin: 0 1px;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.window-control:hover {
+  background: var(--surface-3);
+  border-color: var(--border-subtle);
+  color: var(--text-strong);
+}
+
+.window-control:active {
+  background: var(--surface-2);
+}
+
+.window-control-close:hover {
+  background: var(--destructive);
+  border-color: var(--destructive);
+  color: var(--primary-foreground);
+}
+
+.window-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- macOS traffic-light controls ---- */
+.window-controls-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.traffic-light {
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border: 0.5px solid color-mix(in oklch, var(--foreground), transparent 75%);
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.traffic-light-icon {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  color: color-mix(in oklch, var(--foreground), transparent 50%);
+  stroke-width: 1.5;
+}
+
+.traffic-light-icon-restore {
+  width: 7px;
+  height: 7px;
+}
+
+.traffic-light:hover .traffic-light-icon {
+  opacity: 1;
+}
+
+.traffic-light-close {
+  background: #ff5f57;
+}
+.traffic-light-minimize {
+  background: #febc2e;
+}
+.traffic-light-zoom {
+  background: #28c840;
 }
 
 .terminal-host {

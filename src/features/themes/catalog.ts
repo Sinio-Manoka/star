@@ -13,11 +13,25 @@ import type { ThemeDefinition } from "./types";
 export const builtInThemes: ThemeDefinition[] = [
   // ---- Ayu ----
   {
+    id: "ayu-light",
+    family: "ayu",
+    mode: "light",
+    label: "Ayu Light",
+    swatches: ["#fcfcfc", "#f29718", "#22a4e6", "#86b300", "#e65050"],
+  },
+  {
     id: "ayu-dark",
     family: "ayu",
     mode: "dark",
-    label: "Ayu",
-    swatches: ["#0f1419", "#ffb454", "#59c2ff", "#aad94c", "#f07178"],
+    label: "Ayu Dark",
+    swatches: ["#10141c", "#e6b450", "#59c2ff", "#aad94c", "#f07178"],
+  },
+  {
+    id: "ayu-mirage",
+    family: "ayu",
+    mode: "dark",
+    label: "Ayu Mirage",
+    swatches: ["#242936", "#ffcc66", "#73d0ff", "#d5ff80", "#ff6666"],
   },
 
   // ---- Catppuccin ----

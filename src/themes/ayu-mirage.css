@@ -1,0 +1,77 @@
+/*
+ * Ayu Mirage — official palette from
+ * https://github.com/ayu-theme/ayu-colors/blob/master/themes/mirage.yaml
+ * Resolved via the canonical vscode-ayu JSON output.
+ * Activated by `<html data-theme="ayu-mirage">`.
+ */
+[data-theme="ayu-mirage"] {
+  /* Surface stack (editor.bg / surface.lift / surface.sunk) */
+  --background: #1f2430;
+  --foreground: #cccac2;
+  --card: #242936;
+  --card-foreground: #cccac2;
+  --popover: #282e3b;
+  --popover-foreground: #cccac2;
+
+  /* Accent (common.accent.tint / common.accent.on) */
+  --primary: #ffcc66;
+  --primary-foreground: #735923;
+  --ring: #ffcc66;
+
+  /* Neutral surfaces (ui.bg / ui.line / ui.fg) */
+  --secondary: #1f2430;
+  --secondary-foreground: #707a8c;
+  --muted: #181c26;
+  --muted-foreground: #707a8c;
+
+  /* Secondary palette accent (palette.blue) */
+  --accent: #73d0ff;
+  --accent-foreground: #1f2430;
+
+  /* Status (common.error) */
+  --destructive: #ff6666;
+
+  /* Borders (ui.line) */
+  --border: #171b24;
+  --input: #171b24;
+
+  /* Chart palette (palette.base colors) */
+  --chart-1: #73d0ff;  /* blue */
+  --chart-2: #d5ff80;  /* green */
+  --chart-3: #ffcd66;  /* yellow */
+  --chart-4: #dfbfff;  /* purple */
+  --chart-5: #5ccfe6;  /* indigo */
+
+  /* Sidebar (sideBar.*) */
+  --sidebar: #1f2430;
+  --sidebar-foreground: #cccac2;
+  --sidebar-primary: #ffcc66;
+  --sidebar-primary-foreground: #735923;
+  --sidebar-accent: #282e3b;
+  --sidebar-accent-foreground: #cccac2;
+  --sidebar-border: #171b24;
+  --sidebar-ring: #ffcc66;
+
+  /* Terminal ANSI palette (terminal.ansi*) */
+  --term-bg: #1f2430;
+  --term-fg: #cccac2;
+  --term-cursor: #ffcc66;
+  --term-cursor-accent: #1f2430;
+  --term-selection: #409fff40;
+  --term-black: #171b24;
+  --term-bright-black: #686868;
+  --term-red: #f28273;
+  --term-bright-red: #f28779;
+  --term-green: #87d96c;
+  --term-bright-green: #d5ff80;
+  --term-yellow: #fcca60;
+  --term-bright-yellow: #ffcd66;
+  --term-blue: #6acdff;
+  --term-bright-blue: #73d0ff;
+  --term-magenta: #ddbbff;
+  --term-bright-magenta: #dfbfff;
+  --term-cyan: #93e2c8;
+  --term-bright-cyan: #95e6cb;
+  --term-white: #c7c7c7;
+  --term-bright-white: #ffffff;
+}

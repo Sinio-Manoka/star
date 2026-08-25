@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { FitAddon, init, Terminal } from "ghostty-web";
+import { useThemeStore } from "@/features/themes/themeStore";
 
 let terminalRuntime: Promise<void> | undefined;
 
@@ -19,8 +20,42 @@ type TerminalOutput = {
   data: string;
 };
 
+/**
+ * Build the ghostty-web theme object from the active theme's `--term-*`
+ * CSS variables. Reading computed styles means themes only have to ship
+ * their core palette; the terminal ANSI colors derive automatically.
+ */
+function readTerminalTheme() {
+  const styles = getComputedStyle(document.documentElement);
+  const read = (name: string) => styles.getPropertyValue(name).trim() || "#000000";
+  return {
+    background: read("--term-bg"),
+    foreground: read("--term-fg"),
+    cursor: read("--term-cursor"),
+    cursorAccent: read("--term-cursor-accent"),
+    selectionBackground: read("--term-selection"),
+    black: read("--term-black"),
+    red: read("--term-red"),
+    green: read("--term-green"),
+    yellow: read("--term-yellow"),
+    blue: read("--term-blue"),
+    magenta: read("--term-magenta"),
+    cyan: read("--term-cyan"),
+    white: read("--term-white"),
+    brightBlack: read("--term-bright-black"),
+    brightRed: read("--term-bright-red"),
+    brightGreen: read("--term-bright-green"),
+    brightYellow: read("--term-bright-yellow"),
+    brightBlue: read("--term-bright-blue"),
+    brightMagenta: read("--term-bright-magenta"),
+    brightCyan: read("--term-bright-cyan"),
+    brightWhite: read("--term-bright-white"),
+  };
+}
+
 export function TerminalPanel({ cwd }: TerminalPanelProps) {
   const host = useRef<HTMLDivElement>(null);
+  const themeId = useThemeStore((state) => state.themeId);
 
   useEffect(() => {
     let disposed = false;
@@ -36,6 +71,8 @@ export function TerminalPanel({ cwd }: TerminalPanelProps) {
 
     void preloadTerminal().then(async () => {
       if (disposed || !host.current) return;
+
+      const theme = readTerminalTheme();
       terminal = new Terminal({
         cursorBlink: true,
         cursorStyle: "bar",
@@ -43,29 +80,7 @@ export function TerminalPanel({ cwd }: TerminalPanelProps) {
         fontSize: 12,
         scrollback: 10_000,
         smoothScrollDuration: 110,
-        theme: {
-          background: "#0b0b0d",
-          foreground: "#c9cbd2",
-          cursor: "#f0f0f2",
-          cursorAccent: "#0b0b0d",
-          selectionBackground: "#34343d",
-          black: "#17171a",
-          red: "#e06c75",
-          green: "#98c379",
-          yellow: "#e5c07b",
-          blue: "#78a9ff",
-          magenta: "#c792ea",
-          cyan: "#56b6c2",
-          white: "#d4d4d8",
-          brightBlack: "#686870",
-          brightRed: "#ff7b86",
-          brightGreen: "#b4e88d",
-          brightYellow: "#f2d18b",
-          brightBlue: "#9cc2ff",
-          brightMagenta: "#d9a6ff",
-          brightCyan: "#7bdde8",
-          brightWhite: "#f4f4f5",
-        },
+        theme,
       });
       fit = new FitAddon();
       terminal.loadAddon(fit);
@@ -118,7 +133,7 @@ export function TerminalPanel({ cwd }: TerminalPanelProps) {
       fit?.dispose();
       terminal?.dispose();
     };
-  }, [cwd]);
+  }, [cwd, themeId]);
 
   return <div className="terminal-host" ref={host} />;
 }

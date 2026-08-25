@@ -50,7 +50,7 @@ function ThemeSwatch({ theme, active }: { theme: ThemeDefinition; active: boolea
  * color swatches — click one and the whole UI recolors instantly. No
  * light/dark toggle, no mode picker: pick the palette you want.
  */
-export function ThemeColorPicker() {
+export function ThemeColorPicker({ className }: { className?: string } = {}) {
   const themeId = useThemeStore((state) => state.themeId);
   const customThemes = useThemeStore((state) => state.customThemes);
   const themes = useMemo(() => listAllThemes(customThemes), [customThemes]);
@@ -61,6 +61,7 @@ export function ThemeColorPicker() {
       <PopoverTrigger
         render={
           <TooltipIconButton
+            className={className}
             aria-label={`Theme: ${active?.label ?? "Choose"}`}
             tooltip={`Theme: ${active?.label ?? "Choose"}`}
             side="bottom"
