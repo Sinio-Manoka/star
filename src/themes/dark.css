@@ -1,0 +1,79 @@
+/*
+ * Default dark theme tokens.
+ *
+ * Activated by adding `.dark` to an ancestor of the element you want to
+ * re-skin, or by setting `data-theme="default-dark"` on `<html>` (which the
+ * ThemeProvider also does, so the cascade matches the light variant in
+ * `light.css`).
+ */
+[data-theme="default-dark"] {
+  --background: #0b0b0d;
+  --foreground: oklch(0.985 0 0);
+  --card: #141417;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #141417;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: #1d1d21;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #1d1d21;
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #242429;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #0d0d10;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/*
+ * Backwards-compatible `.dark` selector so existing utilities that key off
+ * `is(.dark *)` keep working regardless of which theme is active.
+ */
+.dark {
+  --background: #0b0b0d;
+  --foreground: oklch(0.985 0 0);
+  --card: #141417;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #141417;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: #1d1d21;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #1d1d21;
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #242429;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #0d0d10;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}

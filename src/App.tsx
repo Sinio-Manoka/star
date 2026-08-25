@@ -6,10 +6,13 @@ import { TooltipIconButton } from "./components/tooltip-icon-button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./components/ui/dialog";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./components/ui/resizable";
 import { SidebarProvider } from "./components/ui/sidebar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { ProjectSidebar } from "./features/projects/ProjectSidebar";
 import { BrainBaseView, EditorBaseView, ProjectsView } from "./features/projects/ProjectViews";
 import { useProjects } from "./features/projects/ProjectProvider";
 import { AiSettings } from "./features/ai/AiSettings";
+import { ThemeColorPicker } from "./features/themes/ThemeColorPicker";
+import { ThemeSettings } from "./features/themes/ThemeSettings";
 
 type Tab = "projects" | "editor" | "brain";
 
@@ -33,6 +36,7 @@ export default function App() {
   const { selectedProject } = useProjects();
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"general" | "providers">("providers");
   const [projectSidebarOpen, setProjectSidebarOpen] = useState(true);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [terminalStarted, setTerminalStarted] = useState(false);
@@ -208,13 +212,41 @@ export default function App() {
         >
           <Settings />
         </TooltipIconButton>
+        <div className="theme-switcher-control">
+          <ThemeColorPicker />
+        </div>
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogContent className="grid h-[min(900px,calc(100vh-1rem))] grid-rows-[minmax(0,1fr)] overflow-hidden p-0 sm:max-w-[min(1280px,calc(100vw-2rem))]">
+          <DialogContent className="grid h-[min(900px,calc(100vh-1rem))] grid-rows-[auto_minmax(0,1fr)] overflow-hidden border-0 bg-background p-0 shadow-none ring-0 sm:max-w-[min(1280px,calc(100vw-2rem))]">
             <DialogHeader className="sr-only">
-              <DialogTitle>AI workspace settings</DialogTitle>
-              <DialogDescription>Connect model providers and coding agents, then choose a model from each project chat.</DialogDescription>
+              <DialogTitle>Workspace settings</DialogTitle>
+              <DialogDescription>Configure the workspace appearance, connect model providers, and manage coding agents.</DialogDescription>
             </DialogHeader>
-            <AiSettings />
+            <Tabs
+              value={settingsTab}
+              onValueChange={(value) => setSettingsTab(value as "general" | "providers")}
+              className="flex h-full min-h-0 flex-col"
+            >
+              <div className="flex shrink-0 flex-col bg-background px-7 pt-5">
+                <TabsList variant="line" className="w-fit justify-start gap-4">
+                  <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
+                  <TabsTrigger value="providers" className="text-xs">Providers</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+                <TabsContent
+                  value="providers"
+                  className="ai-settings-panel flex min-h-0 flex-1 flex-col"
+                >
+                  <AiSettings />
+                </TabsContent>
+                <TabsContent
+                  value="general"
+                  className="ai-settings-panel flex min-h-0 flex-1 flex-col"
+                >
+                  <ThemeSettings />
+                </TabsContent>
+              </div>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </main>

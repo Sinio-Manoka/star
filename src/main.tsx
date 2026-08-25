@@ -4,9 +4,11 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import App from "./App";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProjectProvider } from "./features/projects/ProjectProvider";
+import { ThemeProvider } from "./features/themes/ThemeProvider";
 import "./styles.css";
 
 document.documentElement.classList.add("dark");
+document.documentElement.dataset.theme = "default-dark";
 
 type NativeTitlebarStatus = {
   active: boolean;
@@ -26,10 +28,12 @@ if (isTauri() && navigator.userAgent.includes("Windows")) {
 
 createRoot(document.getElementById("app")!).render(
   <StrictMode>
-    <TooltipProvider>
-      <ProjectProvider>
-        <App />
-      </ProjectProvider>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <ProjectProvider>
+          <App />
+        </ProjectProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </StrictMode>,
 );
