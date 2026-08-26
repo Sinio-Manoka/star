@@ -96,13 +96,13 @@ const Categories: FC<CategoriesProps> = ({
             <ComposerPrimitive.Unstable_TriggerPopoverCategoryItem
               key={cat.id}
               categoryId={cat.id}
-              className="hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm transition-colors outline-none"
+              className="group/slash-category text-(--slash-command-foreground) hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm transition-colors outline-none"
             >
               <span className="flex items-center gap-2">
-                <Icon className="text-muted-foreground size-4" />
+                <Icon className="text-(--slash-command-muted) group-hover/slash-category:text-current group-data-[highlighted]/slash-category:text-current size-4" />
                 {cat.label}
               </span>
-              <ChevronRightIcon className="text-muted-foreground size-4" />
+              <ChevronRightIcon className="text-(--slash-command-muted) group-hover/slash-category:text-current group-data-[highlighted]/slash-category:text-current size-4" />
             </ComposerPrimitive.Unstable_TriggerPopoverCategoryItem>
           );
         })}
@@ -139,7 +139,7 @@ const Items: FC<ItemsProps> = ({
           data-slot="composer-trigger-popover-items"
           className="flex flex-col"
         >
-          <ComposerPrimitive.Unstable_TriggerPopoverBack className="text-muted-foreground hover:bg-accent flex cursor-pointer items-center gap-1.5 border-b px-3 py-2 text-xs tracking-wide uppercase transition-colors">
+          <ComposerPrimitive.Unstable_TriggerPopoverBack className="text-(--slash-command-muted) hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-1.5 border-b px-3 py-2 text-xs tracking-wide uppercase transition-colors">
             <ChevronLeftIcon className="size-3.5" />
             {backLabel}
           </ComposerPrimitive.Unstable_TriggerPopoverBack>
@@ -156,14 +156,14 @@ const Items: FC<ItemsProps> = ({
                   key={item.id}
                   item={item}
                   index={index}
-                  className="hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent flex w-full cursor-pointer flex-col items-start gap-0.5 px-3 py-2 text-start transition-colors outline-none"
+                  className="group/slash-item text-(--slash-command-foreground) hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex w-full cursor-pointer flex-col items-start gap-0.5 px-3 py-2 text-start transition-colors outline-none"
                 >
                   <span className="flex items-center gap-2 text-sm font-medium">
-                    <Icon className="text-primary size-3.5" />
+                    <Icon className="size-3.5 text-current" />
                     {item.label}
                   </span>
                   {item.description && (
-                    <span className="text-muted-foreground ms-5.5 text-xs leading-tight">
+                    <span className="text-(--slash-command-muted) group-hover/slash-item:text-current group-data-[highlighted]/slash-item:text-current ms-5.5 text-xs leading-tight">
                       {item.description}
                     </span>
                   )}
@@ -214,7 +214,7 @@ const ComposerTriggerPopoverImpl: FC<ComposerTriggerPopoverProps> = ({
     <ComposerPrimitive.Unstable_TriggerPopover
       data-slot="composer-trigger-popover"
       className={cn(
-        "aui-composer-trigger-popover bg-popover text-popover-foreground absolute start-0 bottom-full z-50 mb-2 w-64 overflow-hidden rounded-xl border",
+        "aui-composer-trigger-popover bg-popover text-popover-foreground [--slash-command-foreground:var(--popover-foreground)] [--slash-command-muted:color-mix(in_oklch,var(--popover-foreground)_74%,var(--popover))] absolute start-0 bottom-full z-50 mb-2 w-64 overflow-hidden rounded-xl border",
         className,
       )}
       {...props}
