@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeModels, providerModel } from "./providers.mjs";
+import { createProviderModel, normalizeModels } from "@star/ai-providers/runtime";
 
 describe("Vercel AI SDK provider registry", () => {
   it("normalizes provider-specific model catalogs", () => {
@@ -18,8 +18,8 @@ describe("Vercel AI SDK provider registry", () => {
       "vercel-gateway", "compatible",
     ];
     for (const kind of kinds) {
-      expect(() => providerModel({
-        kind, model: "test-model", apiKey: "test-key", baseUrl: ["compatible", "open-responses"].includes(kind) ? "http://127.0.0.1:9999/v1" : undefined,
+      expect(() => createProviderModel({
+        kind, model: "test-model", apiKey: "test-key", baseUrl: ["azure", "compatible", "open-responses"].includes(kind) ? "http://127.0.0.1:9999/v1" : undefined,
       })).not.toThrow();
     }
   });

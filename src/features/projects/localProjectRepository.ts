@@ -2,6 +2,7 @@ import type { CreateProjectInput, Project, ProjectGraphEdge, ProjectGraphNode, P
 
 const PROJECTS_KEY = "star.projects";
 const THREADS_KEY = "star.project-threads";
+const THREAD_MESSAGES_KEY = "star.project-thread-messages";
 const GRAPH_NODES_KEY = "star.project-graph-nodes";
 const GRAPH_EDGES_KEY = "star.project-graph-edges";
 
@@ -13,6 +14,8 @@ function read<T>(key: string): T[] {
 function write<T>(key: string, value: T[]) {
   localStorage.setItem(key, JSON.stringify(value));
 }
+
+type StoredThreadMessages = { threadId: string; messages: unknown[] };
 
 export class LocalProjectRepository implements ProjectRepository {
   async initialize() {}
@@ -33,8 +36,10 @@ export class LocalProjectRepository implements ProjectRepository {
   }
 
   async removeProject(projectId: string) {
+    const removedThreadIds = new Set(read<ProjectThread>(THREADS_KEY).filter((thread) => thread.projectId === projectId).map((thread) => thread.id));
     write(PROJECTS_KEY, read<Project>(PROJECTS_KEY).filter((project) => project.id !== projectId));
     write(THREADS_KEY, read<ProjectThread>(THREADS_KEY).filter((thread) => thread.projectId !== projectId));
+    write(THREAD_MESSAGES_KEY, read<StoredThreadMessages>(THREAD_MESSAGES_KEY).filter((entry) => !removedThreadIds.has(entry.threadId)));
     write(GRAPH_NODES_KEY, read<ProjectGraphNode>(GRAPH_NODES_KEY).filter((node) => node.projectId !== projectId));
     write(GRAPH_EDGES_KEY, read<ProjectGraphEdge>(GRAPH_EDGES_KEY).filter((edge) => edge.projectId !== projectId));
   }
@@ -68,6 +73,20 @@ export class LocalProjectRepository implements ProjectRepository {
     return thread;
   }
 
+  async loadThreadMessages(threadId: string) {
+    return read<StoredThreadMessages>(THREAD_MESSAGES_KEY).find((entry) => entry.threadId === threadId)?.messages ?? [];
+  }
+
+  async saveThreadMessages(threadId: string, messages: unknown[]) {
+    const entries = read<StoredThreadMessages>(THREAD_MESSAGES_KEY);
+    const nextEntry = { threadId, messages };
+    write(THREAD_MESSAGES_KEY, entries.some((entry) => entry.threadId === threadId)
+      ? entries.map((entry) => entry.threadId === threadId ? nextEntry : entry)
+      : [...entries, nextEntry]);
+    const now = new Date().toISOString();
+    write(THREADS_KEY, read<ProjectThread>(THREADS_KEY).map((thread) => thread.id === threadId ? { ...thread, updatedAt: now } : thread));
+  }
+
   async renameThread(threadId: string, title: string) {
     const now = new Date().toISOString();
     write(THREADS_KEY, read<ProjectThread>(THREADS_KEY).map((thread) => (
@@ -84,6 +103,7 @@ export class LocalProjectRepository implements ProjectRepository {
 
   async removeThread(threadId: string) {
     write(THREADS_KEY, read<ProjectThread>(THREADS_KEY).filter((thread) => thread.id !== threadId));
+    write(THREAD_MESSAGES_KEY, read<StoredThreadMessages>(THREAD_MESSAGES_KEY).filter((entry) => entry.threadId !== threadId));
   }
 
   async replaceProjectGraph(projectId: string, snapshot: ProjectGraphSnapshot) {

@@ -58,6 +58,8 @@ export interface ProjectRepository {
   touchProject(projectId: string): Promise<void>;
   listThreads(projectId: string): Promise<ProjectThread[]>;
   createThread(projectId: string, title?: string): Promise<ProjectThread>;
+  loadThreadMessages(threadId: string): Promise<unknown[]>;
+  saveThreadMessages(threadId: string, messages: unknown[]): Promise<void>;
   renameThread(threadId: string, title: string): Promise<void>;
   setThreadStatus(threadId: string, status: ProjectThread["status"]): Promise<void>;
   removeThread(threadId: string): Promise<void>;

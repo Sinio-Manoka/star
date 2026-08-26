@@ -27,12 +27,16 @@ describe("LocalProjectRepository", () => {
     expect((await repository.listProjects())[0].name).toBe("Star IDE");
 
     const thread = await repository.createThread(project.id, "Architecture");
+    const messages = [{ id: "message-1", role: "user", parts: [{ type: "text", text: "Hello" }] }];
+    await repository.saveThreadMessages(thread.id, messages);
+    expect(await repository.loadThreadMessages(thread.id)).toEqual(messages);
     await repository.renameThread(thread.id, "Project architecture");
     await repository.setThreadStatus(thread.id, "archived");
     expect(await repository.listThreads(project.id)).toMatchObject([{ title: "Project architecture", status: "archived" }]);
 
     await repository.removeThread(thread.id);
     expect(await repository.listThreads(project.id)).toEqual([]);
+    expect(await repository.loadThreadMessages(thread.id)).toEqual([]);
   });
 
   it("persists and cascades the project graph", async () => {
@@ -42,10 +46,13 @@ describe("LocalProjectRepository", () => {
       { relativePath: "src", name: "src", kind: "directory", depth: 0, size: 0 },
     ]);
     await repository.replaceProjectGraph(project.id, graph);
+    const thread = await repository.createThread(project.id, "Persisted chat");
+    await repository.saveThreadMessages(thread.id, [{ id: "message-1" }]);
     expect((await repository.getProjectGraph(project.id)).nodes).toHaveLength(2);
 
     await repository.removeProject(project.id);
     expect(await repository.listProjects()).toEqual([]);
     expect(await repository.getProjectGraph(project.id)).toEqual({ nodes: [], edges: [] });
+    expect(await repository.loadThreadMessages(thread.id)).toEqual([]);
   });
 });

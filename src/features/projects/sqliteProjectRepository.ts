@@ -93,6 +93,11 @@ export class SqliteProjectRepository implements ProjectRepository {
       updated_at TEXT NOT NULL
     )`);
     await this.database.execute("CREATE INDEX IF NOT EXISTS project_threads_project_id ON project_threads(project_id, updated_at DESC)");
+    await this.database.execute(`CREATE TABLE IF NOT EXISTS project_thread_messages (
+      thread_id TEXT PRIMARY KEY REFERENCES project_threads(id) ON DELETE CASCADE,
+      messages_json TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT NOT NULL
+    )`);
     await this.database.execute(`CREATE TABLE IF NOT EXISTS project_graph_nodes (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -162,6 +167,30 @@ export class SqliteProjectRepository implements ProjectRepository {
       [thread.id, thread.projectId, thread.title, thread.status, thread.createdAt, thread.updatedAt],
     );
     return thread;
+  }
+
+  async loadThreadMessages(threadId: string) {
+    const rows = await this.database.select<Array<{ messages_json: string }>>(
+      "SELECT messages_json FROM project_thread_messages WHERE thread_id = $1",
+      [threadId],
+    );
+    if (!rows[0]) return [];
+    try {
+      const messages = JSON.parse(rows[0].messages_json) as unknown;
+      return Array.isArray(messages) ? messages : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async saveThreadMessages(threadId: string, messages: unknown[]) {
+    const now = new Date().toISOString();
+    await this.database.execute(
+      `INSERT INTO project_thread_messages (thread_id, messages_json, updated_at) VALUES ($1, $2, $3)
+       ON CONFLICT(thread_id) DO UPDATE SET messages_json = excluded.messages_json, updated_at = excluded.updated_at`,
+      [threadId, JSON.stringify(messages), now],
+    );
+    await this.database.execute("UPDATE project_threads SET updated_at = $1 WHERE id = $2", [now, threadId]);
   }
 
   async renameThread(threadId: string, title: string) {

@@ -1,11 +1,21 @@
 import { Folder, Plus } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { ProjectAssistant } from "./ProjectAssistant";
 import { useProjects } from "./ProjectProvider";
 
+type AssistantSession = {
+  projectId: string;
+  projectName: string;
+  projectPath: string;
+  threadId: string;
+  threadTitle: string;
+};
+
 export function ProjectsView() {
-  const { projects, selectedProject, selectedThread, loading, error, addProject, createThread } = useProjects();
+  const { projects, selectedProject, selectedThread, loading, error, addProject, createThread, loadThreadMessages, saveThreadMessages, renameThread } = useProjects();
   const initializingProject = useRef<string | undefined>(undefined);
+  const [sessions, setSessions] = useState<AssistantSession[]>([]);
 
   useEffect(() => {
     if (!loading && selectedProject && !selectedThread && initializingProject.current !== selectedProject.id) {
@@ -13,6 +23,24 @@ export function ProjectsView() {
       void createThread();
     }
   }, [createThread, loading, selectedProject, selectedThread]);
+
+  useEffect(() => {
+    if (!selectedProject || !selectedThread) return;
+    const nextSession: AssistantSession = {
+      projectId: selectedProject.id,
+      projectName: selectedProject.name,
+      projectPath: selectedProject.rootPath,
+      threadId: selectedThread.id,
+      threadTitle: selectedThread.title,
+    };
+    setSessions((current) => {
+      const existing = current.findIndex((session) => session.threadId === selectedThread.id);
+      if (existing === -1) return [...current, nextSession];
+      const next = [...current];
+      next[existing] = nextSession;
+      return next;
+    });
+  }, [selectedProject, selectedThread]);
 
   if (loading) return <section className="project-empty"><p>Loading projects…</p></section>;
 
@@ -30,14 +58,26 @@ export function ProjectsView() {
 
   return (
     <section className="project-chat" aria-label={`${selectedProject?.name ?? "Project"} chat`}>
-      {selectedProject && (
-        <ProjectAssistant
-          key={`${selectedProject.id}:${selectedThread?.id ?? "draft"}`}
-          projectName={selectedProject.name}
-          projectPath={selectedProject.rootPath}
-          threadId={selectedThread?.id}
-        />
-      )}
+      {sessions.map((session) => {
+        const active = selectedProject?.id === session.projectId && selectedThread?.id === session.threadId;
+        return (
+          <div
+            aria-hidden={!active}
+            className={cn("h-full min-h-0", !active && "hidden")}
+            key={`${session.projectId}:${session.threadId}`}
+          >
+            <ProjectAssistant
+              projectName={session.projectName}
+              projectPath={session.projectPath}
+              threadId={session.threadId}
+              threadTitle={session.threadTitle}
+              loadMessages={loadThreadMessages}
+              saveMessages={saveThreadMessages}
+              renameThread={renameThread}
+            />
+          </div>
+        );
+      })}
       {error && <p className="workspace-error error-copy">{error}</p>}
     </section>
   );

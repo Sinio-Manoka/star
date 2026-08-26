@@ -12,6 +12,7 @@ use std::{
 use tauri::{AppHandle, Emitter, State};
 
 mod ai_runtime;
+mod secret_store;
 
 const MAX_PROJECT_ENTRIES: usize = 5_000;
 const MAX_PROJECT_DEPTH: usize = 20;

@@ -8,7 +8,7 @@ import {
   type FC,
   type PropsWithChildren,
 } from "react";
-import { ChevronDownIcon, LoaderIcon } from "lucide-react";
+import { ChevronDownIcon, LoaderIcon, WrenchIcon } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { useScrollLock } from "@assistant-ui/react";
 import {
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const ANIMATION_DURATION = 200;
 
-const toolGroupVariants = cva("aui-tool-group-root group/tool-group w-full", {
+const toolGroupVariants = cva("aui-tool-group-root group/tool-group w-full max-w-[28rem]", {
   variants: {
     variant: {
       outline: "rounded-lg border py-3",
@@ -107,30 +107,31 @@ function ToolGroupTrigger({
     <CollapsibleTrigger
       data-slot="tool-group-trigger"
       className={cn(
-        "aui-tool-group-trigger group/trigger flex origin-left items-center gap-2 text-sm transition-[color,scale] active:scale-[0.98]",
-        "group-data-[variant=ghost]/tool-group-root:text-muted-foreground group-data-[variant=ghost]/tool-group-root:hover:text-foreground group-data-[variant=ghost]/tool-group-root:py-1.5",
+        "aui-tool-group-trigger group/trigger border-border/55 bg-card/55 hover:bg-accent/45 hover:border-border flex w-full origin-left items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] transition-[background-color,border-color,transform] active:scale-[0.995]",
         "group-data-[variant=outline]/tool-group-root:w-full group-data-[variant=outline]/tool-group-root:px-4",
         "group-data-[variant=muted]/tool-group-root:w-full group-data-[variant=muted]/tool-group-root:px-4",
         className,
       )}
       {...props}
     >
-      {active && (
-        <LoaderIcon
-          data-slot="tool-group-trigger-loader"
-          className="aui-tool-group-trigger-loader size-3 shrink-0 animate-spin [animation-duration:0.6s]"
-        />
-      )}
+      <span className="border-border/60 bg-background/70 flex size-7 shrink-0 items-center justify-center rounded-md border">
+        {active ? (
+          <LoaderIcon
+            data-slot="tool-group-trigger-loader"
+            className="aui-tool-group-trigger-loader text-muted-foreground size-3.5 animate-spin [animation-duration:0.6s]"
+          />
+        ) : <WrenchIcon className="text-muted-foreground size-3.5" />}
+      </span>
       <span
         data-slot="tool-group-trigger-label"
         className={cn(
-          "aui-tool-group-trigger-label-wrapper relative inline-block text-start leading-none font-medium",
-          "group-data-[variant=ghost]/tool-group-root:font-normal",
+          "aui-tool-group-trigger-label-wrapper relative flex min-w-0 flex-1 items-center gap-2 text-start font-medium",
           "group-data-[variant=outline]/tool-group-root:grow",
           "group-data-[variant=muted]/tool-group-root:grow",
         )}
       >
-        <span className="text-xs">{label}</span>
+        <span className="text-foreground">Tools</span>
+        <span className="text-muted-foreground text-[11px] font-normal">{label}</span>
         {active && (
           <span
             aria-hidden

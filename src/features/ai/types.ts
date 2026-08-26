@@ -1,10 +1,6 @@
-export type AiConnectionKind =
-  | "openrouter" | "openai" | "azure" | "anthropic" | "gemini" | "vertex"
-  | "alibaba" | "anthropic-aws" | "baseten" | "huggingface" | "minimax"
-  | "moonshot" | "open-responses" | "ollama" | "groq" | "grok" | "mistral" | "bedrock" | "cohere"
-  | "fireworks" | "deepseek" | "cerebras" | "perplexity" | "together"
-  | "deepinfra" | "byteplus" | "llmgateway" | "vercel-gateway" | "compatible"
-  | "codex" | "claude-code" | "opencode" | "gemini-cli" | "acp";
+import type { ConnectionKind } from "@star/ai-providers";
+
+export type AiConnectionKind = ConnectionKind;
 
 export type AiConnection = {
   id: string;
@@ -40,6 +36,7 @@ export type AiModel = {
 export type AiModelList = {
   models: AiModel[];
   source: "live" | "catalog" | "agent";
+  warning?: string;
 };
 
 export type AiSelection = {

@@ -1,4 +1,3 @@
-use keyring::Entry;
 use rand::{distr::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -10,7 +9,7 @@ use std::{
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
-const CREDENTIAL_SERVICE: &str = "com.star.app.ai";
+use crate::secret_store::SecretStore;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +23,8 @@ pub struct AiConnection {
     pub region: Option<String>,
     pub project_id: Option<String>,
     pub active: bool,
+    /// True only when the secret store actually has a non-empty entry for this
+    /// connection id. Always probed on every list call, never cached.
     #[serde(default)]
     pub has_secret: bool,
 }
@@ -76,6 +77,10 @@ struct SidecarConnection {
 
 pub struct AiState {
     config_path: PathBuf,
+    /// Dual-backend secret storage (OS keyring + encrypted file vault). The
+    /// vault path sits next to `config_path` so it lives in the app config
+    /// dir alongside `ai-connections.json`.
+    secrets: SecretStore,
     connections: Mutex<Vec<AiConnection>>,
     runtime: Mutex<Option<AiRuntimeInfo>>,
     child: Mutex<Option<CommandChild>>,
@@ -86,6 +91,7 @@ impl AiState {
         let config_dir = app.path().app_config_dir().map_err(|error| error.to_string())?;
         fs::create_dir_all(&config_dir).map_err(|error| error.to_string())?;
         let config_path = config_dir.join("ai-connections.json");
+        let vault_path = config_dir.join("ai-secrets.enc");
         let connections = if config_path.exists() {
             serde_json::from_slice(&fs::read(&config_path).map_err(|error| error.to_string())?)
                 .map_err(|error| format!("Could not read AI settings: {error}"))?
@@ -94,6 +100,7 @@ impl AiState {
         };
         Ok(Self {
             config_path,
+            secrets: SecretStore::new(vault_path),
             connections: Mutex::new(connections),
             runtime: Mutex::new(None),
             child: Mutex::new(None),
@@ -116,21 +123,17 @@ impl Drop for AiState {
     }
 }
 
-fn credential(id: &str) -> Result<Entry, String> {
-    Entry::new(CREDENTIAL_SERVICE, id).map_err(|error| error.to_string())
-}
-
 fn public_connections(state: &AiState) -> Result<Vec<AiConnection>, String> {
     let mut connections = state
         .connections
         .lock()
         .map_err(|_| "AI settings are unavailable")?
         .clone();
+    // Probe the secret store on every list so the UI's "has secret"
+    // indicator reflects the actual stored credential (never drifts from
+    // a stale cached value).
     for connection in &mut connections {
-        connection.has_secret = credential(&connection.id)
-            .and_then(|entry| entry.get_password().map_err(|error| error.to_string()))
-            .map(|secret| !secret.is_empty())
-            .unwrap_or(false);
+        connection.has_secret = state.secrets.has(&connection.id);
     }
     Ok(connections)
 }
@@ -166,8 +169,11 @@ pub fn restart(app: &AppHandle, state: &AiState) -> Result<(), String> {
             region: connection.region.clone(),
             project_id: connection.project_id.clone(),
             active: connection.active,
-            api_key: credential(&connection.id)
-                .and_then(|entry| entry.get_password().map_err(|error| error.to_string()))
+            api_key: state
+                .secrets
+                .get(&connection.id)
+                .ok()
+                .flatten()
                 .unwrap_or_default(),
         })
         .collect();
@@ -230,9 +236,11 @@ pub fn ai_save_connection(
             .map(char::from)
             .collect()
     });
-    let api_key = input.api_key.unwrap_or_default().trim().to_string();
-    if !api_key.is_empty() {
-        credential(&id)?.set_password(&api_key).map_err(|error| error.to_string())?;
+    // `None` means the caller is updating metadata (for example the selected
+    // model) and the existing credential must remain untouched. An explicitly
+    // supplied empty string is the only way to clear a saved credential.
+    if let Some(api_key) = input.api_key.as_deref() {
+        state.secrets.set(&id, api_key.trim())?;
     }
 
     {
@@ -242,10 +250,6 @@ pub fn ai_save_connection(
                 connection.active = false;
             }
         }
-        let existing_has_secret = connections
-            .iter()
-            .find(|connection| connection.id == id)
-            .is_some_and(|connection| connection.has_secret);
         let next = AiConnection {
             id: id.clone(),
             kind: input.kind,
@@ -256,7 +260,7 @@ pub fn ai_save_connection(
             region: input.region.filter(|value| !value.trim().is_empty()),
             project_id: input.project_id.filter(|value| !value.trim().is_empty()),
             active: input.active || connections.is_empty(),
-            has_secret: existing_has_secret || !api_key.is_empty(),
+            has_secret: state.secrets.has(&id),
         };
         if let Some(existing) = connections.iter_mut().find(|connection| connection.id == id) {
             *existing = next;
@@ -275,7 +279,7 @@ pub fn ai_remove_connection(
     state: State<'_, AiState>,
     id: String,
 ) -> Result<Vec<AiConnection>, String> {
-    let _ = credential(&id).and_then(|entry| entry.delete_credential().map_err(|error| error.to_string()));
+    state.secrets.set(&id, "")?;
     {
         let mut connections = state.connections.lock().map_err(|_| "AI settings are unavailable")?;
         let removed_active = connections.iter().any(|connection| connection.id == id && connection.active);

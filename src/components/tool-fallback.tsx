@@ -1,16 +1,23 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import {
   AlertCircleIcon,
   CheckIcon,
   ChevronDownIcon,
+  FilePenLineIcon,
+  FilePlusIcon,
   LoaderIcon,
+  ShieldCheckIcon,
+  SquareTerminalIcon,
   XCircleIcon,
 } from "lucide-react";
 import {
+  useAui,
+  useAuiState,
   useScrollLock,
   useToolCallElapsed,
+  type AssistantState,
   type ToolApprovalOption,
   type ToolCallMessagePart,
   type ToolCallMessagePartProps,
@@ -72,7 +79,7 @@ function ToolFallbackRoot({
       open={isOpen}
       onOpenChange={handleOpenChange}
       className={cn(
-        "aui-tool-fallback-root group/tool-fallback-root w-full",
+        "aui-tool-fallback-root group/tool-fallback-root w-full max-w-[28rem]",
         className,
       )}
       style={
@@ -140,42 +147,44 @@ function ToolFallbackTrigger({
     status?.type === "incomplete" && status.reason === "cancelled";
 
   const Icon = statusIconMap[statusType];
-  const label = isCancelled ? "Cancelled tool" : "Used tool";
+  const label = isCancelled ? "Cancelled" : isRunning ? "Running" : statusType === "requires-action" ? "Waiting for approval" : "Completed";
+  const displayName = toolName.replaceAll("_", " ");
 
   return (
     <CollapsibleTrigger
       data-slot="tool-fallback-trigger"
       className={cn(
-        "aui-tool-fallback-trigger group/trigger text-muted-foreground hover:text-foreground flex w-fit origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]",
+        "aui-tool-fallback-trigger group/trigger border-border/55 bg-card/55 hover:bg-accent/45 hover:border-border flex w-full origin-left items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] transition-[background-color,border-color,transform] active:scale-[0.995]",
         className,
       )}
       {...props}
     >
-      <Icon
-        data-slot="tool-fallback-trigger-icon"
-        className={cn(
-          "aui-tool-fallback-trigger-icon size-4 shrink-0",
-          isCancelled && "text-muted-foreground",
-          isRunning && "animate-spin [animation-duration:0.6s]",
-        )}
-      />
+      <span className="border-border/60 bg-background/70 flex size-7 shrink-0 items-center justify-center rounded-md border">
+        <Icon
+          data-slot="tool-fallback-trigger-icon"
+          className={cn(
+            "aui-tool-fallback-trigger-icon text-muted-foreground size-3.5",
+            isCancelled && "text-muted-foreground",
+            isRunning && "animate-spin [animation-duration:0.6s]",
+          )}
+        />
+      </span>
       <span
         data-slot="tool-fallback-trigger-label"
         className={cn(
-          "aui-tool-fallback-trigger-label-wrapper relative inline-block text-start leading-none",
+          "aui-tool-fallback-trigger-label-wrapper relative flex min-w-0 flex-1 items-center gap-2 text-start",
           isCancelled && "text-muted-foreground line-through",
         )}
       >
-        <span>
-          {label}: <b>{toolName}</b>
-        </span>
+        <b className="text-foreground truncate font-medium capitalize">{displayName}</b>
+        <span className="text-muted-foreground ml-auto shrink-0 text-[11px]">{label}</span>
         {isRunning && (
           <span
             aria-hidden
             data-slot="tool-fallback-trigger-shimmer"
             className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            {label}: <b>{toolName}</b>
+            <b className="capitalize">{displayName}</b>
           </span>
         )}
       </span>
@@ -183,7 +192,7 @@ function ToolFallbackTrigger({
       <ChevronDownIcon
         data-slot="tool-fallback-trigger-chevron"
         className={cn(
-          "aui-tool-fallback-trigger-chevron size-4 shrink-0",
+          "aui-tool-fallback-trigger-chevron size-3.5 shrink-0",
           "transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
           "-rotate-90",
           "group-data-open/trigger:rotate-0",
@@ -216,7 +225,7 @@ function ToolFallbackContent({
     >
       <div
         className={cn(
-          "flex flex-col gap-2 ps-6 pt-1 pb-2 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
+          "border-border/45 bg-card/30 mt-1 flex flex-col gap-2 rounded-xl border p-3 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none",
           "group-data-open/collapsible-content:animate-in group-data-open/collapsible-content:fade-in-0 group-data-open/collapsible-content:blur-in-[2px] group-data-open/collapsible-content:slide-in-from-top-1",
           "group-data-closed/collapsible-content:animate-out group-data-closed/collapsible-content:fade-out-0 group-data-closed/collapsible-content:blur-out-[2px] group-data-closed/collapsible-content:slide-out-to-top-1",
           "group-data-closed/collapsible-content:animation-duration-(--animation-duration) group-data-open/collapsible-content:animation-duration-(--animation-duration)",
@@ -279,33 +288,6 @@ type AcpPermissionInput = {
   title?: string;
   options?: Array<{ optionId: string; name: string; kind: string }>;
 };
-
-function AcpPermission({ permissionId, argsText, running }: { permissionId: string; argsText?: string; running: boolean }) {
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string>();
-  let input: AcpPermissionInput = {};
-  try { input = argsText ? JSON.parse(argsText) as AcpPermissionInput : {}; } catch { input = {}; }
-  if (!running || submitted) return null;
-  const respond = async (optionId: string) => {
-    setSubmitted(true);
-    setError(undefined);
-    try { await respondAiPermission(permissionId, optionId); }
-    catch (reason) { setSubmitted(false); setError(reason instanceof Error ? reason.message : String(reason)); }
-  };
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
-      <p className="font-medium">{input.title ?? "Permission required"}</p>
-      <div className="flex flex-wrap gap-2">
-        {input.options?.map((option) => (
-          <Button key={option.optionId} size="sm" variant={option.kind.startsWith("allow") ? "default" : "outline"} onClick={() => void respond(option.optionId)}>
-            {option.name}
-          </Button>
-        ))}
-      </div>
-      {error && <p className="text-destructive text-xs">{error}</p>}
-    </div>
-  );
-}
 
 function ToolFallbackError({
   status,
@@ -580,31 +562,15 @@ function ToolFallbackApproval({
 }
 
 const ToolFallbackImpl: ToolCallMessagePartComponent = ({
-  toolCallId,
   toolName,
   argsText,
   result,
   status,
-  addResult,
-  resume,
-  interrupt,
-  approval,
-  respondToApproval,
 }) => {
   const isCancelled =
     status?.type === "incomplete" && status.reason === "cancelled";
   const isAcpPermission = toolName === "acp_permission";
-  const isRequiresAction = status?.type === "requires-action" || (isAcpPermission && status?.type === "running");
-  const shouldRenderApproval =
-    isRequiresAction && offersInterruptAction(status, approval, interrupt);
-
-  const [open, setOpen] = useState(isRequiresAction);
-  const [prevRequiresAction, setPrevRequiresAction] =
-    useState(isRequiresAction);
-  if (isRequiresAction !== prevRequiresAction) {
-    setPrevRequiresAction(isRequiresAction);
-    if (isRequiresAction) setOpen(true);
-  }
+  const [open, setOpen] = useState(false);
 
   return (
     <ToolFallbackRoot open={open} onOpenChange={setOpen}>
@@ -615,22 +581,135 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
           argsText={argsText}
           className={cn(isCancelled && "opacity-60")}
         />}
-        {isAcpPermission && <AcpPermission permissionId={toolCallId} argsText={argsText} running={status?.type === "running"} />}
-        {!isAcpPermission && shouldRenderApproval && (
-          <ToolFallbackApproval
-            addResult={addResult}
-            resume={resume}
-            interrupt={interrupt}
-            approval={approval}
-            respondToApproval={respondToApproval}
-            status={status}
-          />
-        )}
         {!isCancelled && <ToolFallbackResult result={result} />}
       </ToolFallbackContent>
     </ToolFallbackRoot>
   );
 };
+
+type PendingTool = {
+  messageId: string;
+  toolCallId: string;
+  toolName: string;
+  argsText?: string;
+  approval?: ToolCallMessagePart["approval"];
+  interrupt?: ToolCallMessagePart["interrupt"];
+  status?: ToolCallMessagePartStatus;
+};
+
+const pendingToolsFromMessages = (messages: AssistantState["thread"]["messages"]): PendingTool[] =>
+  messages.flatMap((message) => message.parts.flatMap((part) => {
+    if (part.type !== "tool-call") return [];
+    const unresolvedApproval = part.approval && part.approval.approved === undefined && part.approval.resolution === undefined;
+    const isAcpPermission = part.toolName === "acp_permission" && part.status?.type === "running";
+    const needsAction = part.status?.type === "requires-action" && (unresolvedApproval || part.interrupt);
+    return needsAction || isAcpPermission ? [{
+      messageId: message.id,
+      toolCallId: part.toolCallId,
+      toolName: part.toolName,
+      argsText: part.argsText,
+      approval: part.approval,
+      interrupt: part.interrupt,
+      status: part.status,
+    }] : [];
+  }));
+
+function parseToolArgs(argsText?: string): Record<string, unknown> {
+  try {
+    return argsText ? JSON.parse(argsText) as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function approvalPresentation(toolName: string, args: Record<string, unknown>) {
+  const pathValue = typeof args.path === "string" ? args.path : undefined;
+  const command = typeof args.command === "string" ? args.command : undefined;
+  switch (toolName) {
+    case "run_project_command":
+      return { Icon: SquareTerminalIcon, title: "Run command", detail: command ?? "Project command", mono: true };
+    case "write_project_file":
+      return { Icon: FilePlusIcon, title: "Write file", detail: pathValue ?? "Project file", mono: false };
+    case "replace_in_project_file":
+      return { Icon: FilePenLineIcon, title: "Edit file", detail: pathValue ?? "Project file", mono: false };
+    case "acp_permission":
+      return { Icon: ShieldCheckIcon, title: "Agent permission", detail: typeof args.title === "string" ? args.title : "Permission requested", mono: false };
+    default:
+      return { Icon: ShieldCheckIcon, title: "Allow action", detail: toolName.replaceAll("_", " "), mono: false };
+  }
+}
+
+function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
+  const aui = useAui();
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string>();
+  const args = parseToolArgs(toolCall.argsText);
+  const isAcpPermission = toolCall.toolName === "acp_permission";
+  const acpInput = args as AcpPermissionInput;
+  const reason = typeof args.reason === "string" ? args.reason : undefined;
+  const presentation = approvalPresentation(toolCall.toolName, args);
+  const { Icon } = presentation;
+
+  const respond = async (response: { approved: boolean } | { optionId: string }) => {
+    if (submitted) return;
+    setSubmitted(true);
+    setError(undefined);
+    try {
+      if (isAcpPermission && "optionId" in response) {
+        await respondAiPermission(toolCall.toolCallId, response.optionId);
+        return;
+      }
+      const part = aui.thread.message({ id: toolCall.messageId }).part({ toolCallId: toolCall.toolCallId });
+      if (toolCall.approval) part.respondToToolApproval(response);
+      else if (toolCall.interrupt) part.resumeToolCall(response);
+      else part.addToolResult("approved" in response && response.approved ? APPROVED_RESULT : DENIED_RESULT);
+    } catch (reason) {
+      setSubmitted(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  };
+
+  if (submitted) return null;
+
+  return (
+    <div className="border-border/65 bg-card/95 animate-in fade-in slide-in-from-bottom-1 flex w-full flex-wrap items-center gap-2 rounded-lg border p-2 shadow-md shadow-black/8 duration-150" title={reason}>
+      <span className="border-border/55 bg-background flex size-7 shrink-0 items-center justify-center rounded-md border">
+        <Icon className="size-3.5" />
+      </span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <p className="shrink-0 text-[13px] font-medium">{presentation.title}</p>
+        <span className={cn("text-muted-foreground min-w-0 truncate text-xs", presentation.mono && "bg-muted/60 rounded px-1.5 py-0.5 font-mono text-[11px]")}>
+          {presentation.detail}
+        </span>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-1.5">
+        {isAcpPermission ? acpInput.options?.map((option) => (
+          <Button key={option.optionId} size="xs" variant={option.kind.startsWith("allow") ? "default" : "outline"} onClick={() => void respond({ optionId: option.optionId })}>
+            {option.name}
+          </Button>
+        )) : (
+          <>
+            <Button size="xs" onClick={() => void respond({ approved: true })}>Allow</Button>
+            <Button size="xs" variant="ghost" onClick={() => void respond({ approved: false })}>Deny</Button>
+          </>
+        )}
+      </div>
+      {error && <p className="text-destructive basis-full text-xs">{error}</p>}
+    </div>
+  );
+}
+
+function PendingToolApprovalDock() {
+  const messages = useAuiState((state) => state.thread.messages);
+  const pendingTools = useMemo(() => pendingToolsFromMessages(messages), [messages]);
+  if (!pendingTools.length) return null;
+
+  return (
+    <div className="aui-pending-tool-approvals flex w-full flex-col gap-2" role="region" aria-label="Actions awaiting approval">
+      {pendingTools.map((toolCall) => <PendingToolApprovalCard key={toolCall.toolCallId} toolCall={toolCall} />)}
+    </div>
+  );
+}
 
 const ToolFallback = memo(
   ToolFallbackImpl,
@@ -662,4 +741,5 @@ export {
   ToolFallbackResult,
   ToolFallbackError,
   ToolFallbackApproval,
+  PendingToolApprovalDock,
 };

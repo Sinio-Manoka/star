@@ -119,11 +119,11 @@ export default function App() {
             <ResizablePanelGroup className="app-panels" orientation="vertical">
               <ResizablePanel id="workspace" minSize={180} groupResizeBehavior="preserve-relative-size">
                 <div className="view-host">
-                  <div className="tab-view" key={activeTab}>
-                    {activeTab === "projects" && <ProjectsView />}
-                    {activeTab === "editor" && <EditorBaseView />}
-                    {activeTab === "brain" && <BrainBaseView />}
+                  <div className="tab-view" hidden={activeTab !== "projects"}>
+                    <ProjectsView />
                   </div>
+                  {activeTab === "editor" && <div className="tab-view" key="editor"><EditorBaseView /></div>}
+                  {activeTab === "brain" && <div className="tab-view" key="brain"><BrainBaseView /></div>}
                 </div>
               </ResizablePanel>
               <ResizableHandle

@@ -16,7 +16,8 @@ import {
   ReasoningText,
   ReasoningTrigger,
 } from "@/components/reasoning";
-import { ToolFallback } from "@/components/tool-fallback";
+import { PendingToolApprovalDock, ToolFallback } from "@/components/tool-fallback";
+import { ComposerTriggerPopover } from "@/components/composer-trigger-popover";
 import {
   ToolGroupContent,
   ToolGroupRoot,
@@ -41,6 +42,9 @@ import {
   type FileMessagePartComponent,
   type ImageMessagePartComponent,
   type ToolCallMessagePartComponent,
+  type Unstable_SlashCommand,
+  unstable_useSlashCommandAdapter,
+  useAui,
   useAuiState,
 } from "@assistant-ui/react";
 import {
@@ -51,15 +55,21 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  FileSearchIcon,
+  ListChecksIcon,
   MicIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
+  SearchCodeIcon,
   SquareIcon,
+  TestTube2Icon,
+  WandSparklesIcon,
 } from "lucide-react";
 import {
   createContext,
   useContext,
+  useMemo,
   type ComponentType,
   type FC,
   type PropsWithChildren,
@@ -199,6 +209,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
+            <PendingToolApprovalDock />
             <Composer projectPicker={projectPicker} modelPicker={modelPicker} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
@@ -255,10 +266,45 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
+const COMMAND_ICONS = {
+  review: FileSearchIcon,
+  explain: SearchCodeIcon,
+  plan: ListChecksIcon,
+  fix: WandSparklesIcon,
+  test: TestTube2Icon,
+};
+
+const SlashCommands: FC = () => {
+  const aui = useAui();
+  const commands = useMemo<readonly Unstable_SlashCommand[]>(() => {
+    const run = (prompt: string) => {
+      queueMicrotask(() => {
+        aui.composer.setText(prompt);
+        aui.composer.send();
+      });
+    };
+    return [
+      { id: "review", description: "Review the current project changes", icon: "review", execute: () => run("Review the current project changes. Identify important issues and suggest concrete improvements.") },
+      { id: "explain", description: "Explain the relevant code and behavior", icon: "explain", execute: () => run("Explain the relevant code and behavior for my current task in clear terms.") },
+      { id: "plan", description: "Create an implementation plan", icon: "plan", execute: () => run("Create a concise implementation plan for my current task before making changes.") },
+      { id: "fix", description: "Find and fix the current problem", icon: "fix", execute: () => run("Investigate the current problem, implement the appropriate fix, and verify it.") },
+      { id: "test", description: "Run the relevant project checks", icon: "test", execute: () => run("Run the relevant tests and checks for the current project, then fix any failures caused by the current work.") },
+    ];
+  }, [aui]);
+  const slash = unstable_useSlashCommandAdapter({
+    commands,
+    removeOnExecute: true,
+    iconMap: COMMAND_ICONS,
+  });
+
+  return <ComposerTriggerPopover char="/" {...slash} />;
+};
+
 const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
+    <ComposerPrimitive.Unstable_TriggerPopoverRoot>
+      <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+        <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
                         <div className="aui-composer-dictation-status bg-muted text-muted-foreground flex min-h-7 items-center gap-2 rounded-lg px-2.5 text-xs" role="status" aria-live="polite">
                           <span className="relative flex size-2" aria-hidden="true">
                             <span className="bg-destructive absolute inline-flex size-full animate-ping rounded-full opacity-60" />
@@ -275,7 +321,9 @@ const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ 
                       enterKeyHint="send"
                       aria-label="Message input"
                     /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} /></ComposerPrimitive.AttachmentDropzone>
-    </ComposerPrimitive.Root>
+        <SlashCommands />
+      </ComposerPrimitive.Root>
+    </ComposerPrimitive.Unstable_TriggerPopoverRoot>
   );
 };
 

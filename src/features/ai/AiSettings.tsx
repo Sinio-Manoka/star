@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Bot, Check, KeyRound, Link2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Bot, Check, CircleCheck, KeyRound, Link2, MoreHorizontal, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ModelSelector, type ModelOption } from "@/components/model-selector";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   detectAiClis, listAiConnections, listAiModels, notifyAiConnectionsChanged,
-  removeAiConnection, saveAiConnection,
+  removeAiConnection, saveAiConnection, testAiConnection,
 } from "./api";
 import { ProviderBrandIcon } from "./ProviderBrandIcon";
 import { providerCatalog, providerDefinition, type ProviderDefinition } from "./providerCatalog";
@@ -101,15 +101,26 @@ function ConnectionModelPicker({ connection, onChange, onError }: {
   );
 }
 
-function ConnectionRow({ connection, onActivate, onModelChange, onRemove, onError }: {
+function ConnectionRow({ connection, onActivate, onModelChange, onRemove, onTest, onError }: {
   connection: AiConnection;
   onActivate(connection: AiConnection): void;
   onModelChange(connection: AiConnection, modelId: string): Promise<void>;
   onRemove(id: string): void;
+  onTest(id: string): Promise<void>;
   onError(reason: unknown): void;
 }) {
   const provider = providerDefinition(connection.kind);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  const test = async () => {
+    setTesting(true);
+    setVerified(false);
+    try { await onTest(connection.id); setVerified(true); }
+    catch (reason) { onError(reason); }
+    finally { setTesting(false); }
+  };
 
   return (
     <>
@@ -119,6 +130,7 @@ function ConnectionRow({ connection, onActivate, onModelChange, onRemove, onErro
             <ProviderGlyph provider={provider} />
             <span className="truncate font-medium">{connection.label}</span>
             {connection.active && <span title="Default connection"><Check className="size-3.5 text-muted-foreground" /><span className="sr-only">Default connection</span></span>}
+            {verified && <span title="Connection verified"><CircleCheck className="size-3.5 text-muted-foreground" /><span className="sr-only">Connection verified</span></span>}
           </div>
         </TableCell>
         <TableCell>
@@ -130,6 +142,9 @@ function ConnectionRow({ connection, onActivate, onModelChange, onRemove, onErro
             <DropdownMenuContent side="bottom" align="end" className="w-44">
               <DropdownMenuGroup>
                 {!connection.active && <DropdownMenuItem onClick={() => onActivate(connection)}><Check />Make default</DropdownMenuItem>}
+                <DropdownMenuItem disabled={testing} onClick={() => void test()}>
+                  {testing ? <Spinner /> : <RefreshCw />}{testing ? "Testing…" : "Test connection"}
+                </DropdownMenuItem>
               </DropdownMenuGroup>
               {!connection.active && <DropdownMenuSeparator />}
               <DropdownMenuGroup>
@@ -189,7 +204,7 @@ function ConnectionForm({ provider, onCancel, onSaved }: {
       <form id="provider-connection-form" className="flex flex-col gap-4" onSubmit={submit}>
         <FieldGroup>
           {provider.keyMode !== "none" && <Field><FieldLabel htmlFor="provider-api-key">API key</FieldLabel><Input id="provider-api-key" type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required={provider.keyMode === "required"} /><FieldDescription>{provider.keyMode === "optional" ? "Optional when environment credentials are available. " : ""}Stored in the operating system credential vault.</FieldDescription></Field>}
-          {provider.baseUrl && <Field><FieldLabel htmlFor="provider-base-url">Base URL</FieldLabel><Input id="provider-base-url" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required={provider.baseUrlRequired} placeholder="https://api.example.com/v1" />{!provider.baseUrlRequired && <FieldDescription>Optional. Leave empty to use the provider default.</FieldDescription>}</Field>}
+          {provider.baseUrl && <Field><FieldLabel htmlFor="provider-base-url">Base URL</FieldLabel><Input id="provider-base-url" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} required={provider.baseUrlRequired} placeholder={provider.baseUrlPlaceholder ?? "https://api.example.com/v1"} />{!provider.baseUrlRequired && <FieldDescription>Optional. Leave empty to use the provider default.</FieldDescription>}</Field>}
           {provider.region && <Field><FieldLabel htmlFor="provider-region">Region or location</FieldLabel><Input id="provider-region" value={region} onChange={(event) => setRegion(event.target.value)} /></Field>}
           {provider.project && <Field><FieldLabel htmlFor="provider-project">{provider.projectLabel ?? "Google Cloud project"}</FieldLabel><Input id="provider-project" value={projectId} onChange={(event) => setProjectId(event.target.value)} />{provider.projectDescription && <FieldDescription>{provider.projectDescription}</FieldDescription>}</Field>}
           {provider.command && <Field><FieldLabel htmlFor="provider-command">ACP launch command</FieldLabel><Input id="provider-command" value={command} onChange={(event) => setCommand(event.target.value)} required placeholder="agent --acp" /><FieldDescription>The process must expose ACP over standard input/output.</FieldDescription></Field>}
@@ -197,7 +212,13 @@ function ConnectionForm({ provider, onCancel, onSaved }: {
         {error && <Alert variant="destructive"><AlertCircle /><AlertTitle>Connection failed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
       </form>
       <Separator />
-      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onCancel}>Cancel</Button><Button type="submit" form="provider-connection-form" disabled={saving}>{saving ? <Spinner data-icon="inline-start" /> : <Link2 data-icon="inline-start" />}{saving ? "Connecting…" : "Connect"}</Button></div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" form="provider-connection-form" disabled={saving}>
+          {saving ? <Spinner data-icon="inline-start" /> : <Link2 data-icon="inline-start" />}
+          {saving ? "Connecting…" : "Connect"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -231,6 +252,10 @@ export function AiSettings() {
     try { setConnections(await removeAiConnection(id)); notifyAiConnectionsChanged(); }
     catch (reason) { setError(message(reason)); }
   };
+  const test = async (id: string) => {
+    const result = await testAiConnection(id);
+    if (!result.ok) throw new Error(result.error);
+  };
 
   const providerPanel = (catalog: ProviderDefinition[], title: string, description: string) => {
     const configured = connections.filter((connection) => catalog.some((provider) => provider.kind === connection.kind));
@@ -252,7 +277,7 @@ export function AiSettings() {
                 <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
                   <Table>
                     <TableHeader><TableRow><TableHead>Connection</TableHead><TableHead>Default model</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
-                    <TableBody>{configured.map((connection) => <ConnectionRow key={connection.id} connection={connection} onActivate={(item) => void activate(item)} onModelChange={updateModel} onRemove={(id) => void remove(id)} onError={(reason) => setError(message(reason))} />)}</TableBody>
+                    <TableBody>{configured.map((connection) => <ConnectionRow key={connection.id} connection={connection} onActivate={(item) => void activate(item)} onModelChange={updateModel} onRemove={(id) => void remove(id)} onTest={test} onError={(reason) => setError(message(reason))} />)}</TableBody>
                   </Table>
                 </div>
               )}

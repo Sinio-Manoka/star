@@ -25,6 +25,8 @@ type ProjectContextValue = {
   selectProject(projectId: string): Promise<void>;
   createThread(): Promise<void>;
   selectThread(threadId: string): void;
+  loadThreadMessages(threadId: string): Promise<unknown[]>;
+  saveThreadMessages(threadId: string, messages: unknown[]): Promise<void>;
   renameThread(threadId: string, title: string): Promise<void>;
   archiveThread(threadId: string): Promise<void>;
   removeThread(threadId: string): Promise<void>;
@@ -150,11 +152,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (selectedProjectId) localStorage.setItem(selectedThreadKey(selectedProjectId), threadId);
   }, [selectedProjectId]);
 
+  const loadThreadMessages = useCallback((threadId: string) => repository.loadThreadMessages(threadId), [repository]);
+
+  const saveThreadMessages = useCallback(async (threadId: string, messages: unknown[]) => {
+    await repository.saveThreadMessages(threadId, messages);
+    if (selectedProjectId) setThreads(await repository.listThreads(selectedProjectId));
+  }, [repository, selectedProjectId]);
+
   const renameThread = useCallback(async (threadId: string, title: string) => {
     const nextTitle = title.trim();
-    if (!nextTitle || !selectedProjectId) return;
+    if (!nextTitle) return;
     await repository.renameThread(threadId, nextTitle);
-    await loadThreads(selectedProjectId);
+    if (selectedProjectId) await loadThreads(selectedProjectId);
   }, [loadThreads, repository, selectedProjectId]);
 
   const archiveThread = useCallback(async (threadId: string) => {
@@ -185,10 +194,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     selectProject,
     createThread,
     selectThread,
+    loadThreadMessages,
+    saveThreadMessages,
     renameThread,
     archiveThread,
     removeThread,
-  }), [addProject, archiveThread, createThread, error, loading, projects, removeProject, removeThread, renameProject, renameThread, selectProject, selectedProjectId, selectedThreadId, selectThread, threads]);
+  }), [addProject, archiveThread, createThread, error, loadThreadMessages, loading, projects, removeProject, removeThread, renameProject, renameThread, saveThreadMessages, selectProject, selectedProjectId, selectedThreadId, selectThread, threads]);
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
