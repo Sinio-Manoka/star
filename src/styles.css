@@ -47,6 +47,24 @@
   /* Active conversation bar — uses the theme accent. */
   --conversation-active: var(--primary);
 
+  /* Runtime status and window-control colors remain overridable per theme. */
+  --status-running: var(--chart-1);
+  --status-approval: var(--chart-3);
+  --status-completed: var(--chart-2);
+  --status-failed: var(--destructive);
+  --window-control-close: var(--destructive);
+  --window-control-minimize: var(--chart-3);
+  --window-control-zoom: var(--chart-2);
+  --overlay-backdrop: color-mix(in oklch, var(--background) 55%, transparent);
+  --media-overlay: color-mix(in oklch, var(--background) 88%, transparent);
+  --media-control: color-mix(in oklch, var(--background) 72%, transparent);
+  --media-control-foreground: var(--foreground);
+  --media-hairline: color-mix(in oklch, var(--foreground) 12%, transparent);
+
+  /* Overlay geometry can be tuned by custom themes without component edits. */
+  --command-menu-width: 20rem;
+  --command-menu-max-height: min(24rem, 45vh);
+
   /*
    * Terminal ANSI palette — derived from the active theme so the ghostty-web
    * terminal follows the IDE color scheme. Light versions of accents are
@@ -281,8 +299,8 @@ button { font: inherit; }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="queued"]::before,
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="running"]::before {
-  background: color-mix(in srgb, #69a7ff 22%, transparent);
-  box-shadow: 0 0 7px color-mix(in srgb, #69a7ff 34%, transparent);
+  background: color-mix(in oklch, var(--status-running) 22%, transparent);
+  box-shadow: 0 0 7px color-mix(in oklch, var(--status-running) 34%, transparent);
 }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="queued"]::after,
@@ -294,27 +312,27 @@ button { font: inherit; }
   width: 2px;
   height: 8px;
   border-radius: 999px;
-  background: #69a7ff;
-  box-shadow: 0 0 6px #69a7ff, 0 0 11px color-mix(in srgb, #69a7ff 72%, transparent);
+  background: var(--status-running);
+  box-shadow: 0 0 6px var(--status-running), 0 0 11px color-mix(in oklch, var(--status-running) 72%, transparent);
   content: "";
   animation: conversation-run-travel 1.15s ease-in-out infinite alternate;
 }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="awaiting-approval"]::before {
-  background: #e6ad55;
-  box-shadow: 0 0 6px #e6ad55, 0 0 11px color-mix(in srgb, #e6ad55 62%, transparent);
+  background: var(--status-approval);
+  box-shadow: 0 0 6px var(--status-approval), 0 0 11px color-mix(in oklch, var(--status-approval) 62%, transparent);
   animation: conversation-run-pulse 1.25s ease-in-out infinite;
 }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="completed"]::before {
-  background: #63c78b;
-  box-shadow: 0 0 6px #63c78b, 0 0 11px color-mix(in srgb, #63c78b 62%, transparent);
+  background: var(--status-completed);
+  box-shadow: 0 0 6px var(--status-completed), 0 0 11px color-mix(in oklch, var(--status-completed) 62%, transparent);
 }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="failed"]::before,
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="interrupted"]::before {
-  background: #ed6a72;
-  box-shadow: 0 0 6px #ed6a72, 0 0 11px color-mix(in srgb, #ed6a72 62%, transparent);
+  background: var(--status-failed);
+  box-shadow: 0 0 6px var(--status-failed), 0 0 11px color-mix(in oklch, var(--status-failed) 62%, transparent);
 }
 
 .project-chat-list [data-slot="sidebar-menu-item"][data-run-status="cancelled"]::before {
@@ -1239,13 +1257,13 @@ button { font: inherit; }
 }
 
 .traffic-light-close {
-  background: #ff5f57;
+  background: var(--window-control-close);
 }
 .traffic-light-minimize {
-  background: #febc2e;
+  background: var(--window-control-minimize);
 }
 .traffic-light-zoom {
-  background: #28c840;
+  background: var(--window-control-zoom);
 }
 
 .terminal-host {

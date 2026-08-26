@@ -19,13 +19,13 @@ const badgeVariants = cva(
           "bg-muted text-muted-foreground [a&]:hover:bg-muted/80 [a&]:hover:text-foreground",
         ghost:
           "text-muted-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground bg-transparent",
-        info: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 [a&]:hover:bg-blue-100/80",
+        info: "bg-[color-mix(in_oklch,var(--status-running)_16%,var(--background))] text-[color-mix(in_oklch,var(--status-running)_68%,var(--foreground))] [a&]:hover:bg-[color-mix(in_oklch,var(--status-running)_22%,var(--background))]",
         warning:
-          "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 [a&]:hover:bg-amber-100/80",
+          "bg-[color-mix(in_oklch,var(--status-approval)_16%,var(--background))] text-[color-mix(in_oklch,var(--status-approval)_68%,var(--foreground))] [a&]:hover:bg-[color-mix(in_oklch,var(--status-approval)_22%,var(--background))]",
         success:
-          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 [a&]:hover:bg-emerald-100/80",
+          "bg-[color-mix(in_oklch,var(--status-completed)_16%,var(--background))] text-[color-mix(in_oklch,var(--status-completed)_68%,var(--foreground))] [a&]:hover:bg-[color-mix(in_oklch,var(--status-completed)_22%,var(--background))]",
         destructive:
-          "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 [a&]:hover:bg-red-100/80",
+          "bg-[color-mix(in_oklch,var(--status-failed)_16%,var(--background))] text-[color-mix(in_oklch,var(--status-failed)_68%,var(--foreground))] [a&]:hover:bg-[color-mix(in_oklch,var(--status-failed)_22%,var(--background))]",
       },
       size: {
         sm: "px-1.5 py-0.5",

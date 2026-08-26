@@ -6,7 +6,13 @@ import { listAllThemes, useThemeStore } from "./themeStore";
 import type { ThemeDefinition } from "./types";
 
 function ThemeSwatch({ theme, active }: { theme: ThemeDefinition; active: boolean }) {
-  const swatches = theme.swatches ?? ["#888", "#888", "#888", "#888", "#888"];
+  const swatches = theme.swatches ?? [
+    "var(--background)",
+    "var(--primary)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--destructive)",
+  ];
   return (
     <button
       type="button"

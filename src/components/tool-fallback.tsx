@@ -688,7 +688,7 @@ function PendingToolApprovalCard({ toolCall, threadId }: { toolCall: PendingTool
   if (submitted) return null;
 
   return (
-    <div className="border-border/65 bg-card/95 animate-in fade-in slide-in-from-bottom-1 flex w-full flex-wrap items-baseline gap-2 rounded-lg border p-2 shadow-md shadow-black/8 duration-150" title={reason}>
+    <div className="border-border/65 bg-card/95 animate-in fade-in slide-in-from-bottom-1 flex w-full flex-wrap items-baseline gap-2 rounded-lg border p-2 shadow-[0_4px_12px_var(--shadow-color-soft)] duration-150" title={reason}>
       <span className="border-border/55 bg-background flex size-7 shrink-0 items-center justify-center self-center rounded-md border">
         <Icon className="size-3.5" />
       </span>

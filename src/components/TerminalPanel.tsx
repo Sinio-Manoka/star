@@ -27,7 +27,7 @@ type TerminalOutput = {
  */
 function readTerminalTheme() {
   const styles = getComputedStyle(document.documentElement);
-  const read = (name: string) => styles.getPropertyValue(name).trim() || "#000000";
+  const read = (name: string) => styles.getPropertyValue(name).trim();
   return {
     background: read("--term-bg"),
     foreground: read("--term-fg"),
