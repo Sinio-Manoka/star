@@ -214,7 +214,7 @@ const ComposerTriggerPopoverImpl: FC<ComposerTriggerPopoverProps> = ({
     <ComposerPrimitive.Unstable_TriggerPopover
       data-slot="composer-trigger-popover"
       className={cn(
-        "aui-composer-trigger-popover bg-popover text-popover-foreground [--slash-command-foreground:var(--popover-foreground)] [--slash-command-muted:color-mix(in_oklch,var(--popover-foreground)_74%,var(--popover))] absolute start-0 bottom-full z-50 mb-2 max-h-(--command-menu-max-height) w-(--command-menu-width) max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-xl border shadow-[0_16px_40px_var(--shadow-color)]",
+        "aui-composer-trigger-popover bg-popover text-popover-foreground [--slash-command-foreground:var(--popover-foreground)] [--slash-command-muted:color-mix(in_oklch,var(--popover-foreground)_74%,var(--popover))] absolute start-0 bottom-full z-50 mb-2 max-h-(--command-menu-max-height) w-(--command-menu-width) max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-xl border",
         className,
       )}
       {...props}
