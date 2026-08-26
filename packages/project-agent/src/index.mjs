@@ -115,21 +115,47 @@ function numberedSlice(text, startLine = 1, endLine = startLine + MAX_READ_LINES
   };
 }
 
-export function projectAgentInstructions(projectName) {
+export function projectAgentInstructions(projectName, config = {}) {
+  const mode = config.mode === "plan" ? "plan" : "build";
+  const thinkingEffort = ["low", "high"].includes(config.thinkingEffort) ? config.thinkingEffort : "medium";
+  const modeInstructions = mode === "plan"
+    ? [
+        "You are in Plan mode. Inspect and reason about the project, but do not modify files or run commands.",
+        "Produce a concrete, ordered implementation plan. Revise it when the user asks for changes.",
+        "When the plan is ready to implement, call request_mode_change with targetMode \"build\". Do not start implementation until the user approves that transition.",
+      ]
+    : [
+        "You are in Build mode. Implement the user's request and verify the result using the available project tools.",
+        "If the task is materially ambiguous, high-risk, or complex enough that planning first would prevent rework, call request_mode_change with targetMode \"plan\" and explain why.",
+        "Do not request Plan mode for ordinary, well-scoped work that can be implemented safely.",
+      ];
+  const thinkingInstruction = thinkingEffort === "high"
+    ? "Use thorough reasoning: inspect broadly enough to catch interactions and verify carefully."
+    : thinkingEffort === "low"
+      ? "Use concise reasoning: take the shortest safe path and avoid unnecessary exploration."
+      : "Use balanced reasoning: inspect relevant context and verify proportionally to risk.";
+
   return [
     `You are a coding agent working on the selected project${projectName ? ` “${projectName}”` : ""}.`,
+    ...modeInstructions,
+    thinkingInstruction,
     "Use the project tools to inspect real files before making claims or proposing edits.",
     "Paths passed to tools must be relative to the project root.",
     "Prefer targeted replacements over rewriting whole files. Re-read relevant code before changing it.",
-    "File mutations and commands require the user's explicit approval. Explain the purpose in your response or tool arguments, then request the tool.",
+    "Respect the configured permission policy. When approval is required, explain the purpose in the tool's reason argument.",
     "Do not claim a change or command succeeded until its tool result confirms it.",
   ].join("\n");
 }
 
-export function createProjectTools(projectPath) {
+export function createProjectTools(projectPath, config = {}) {
   if (!projectPath?.trim()) return {};
 
-  return {
+  const mode = config.mode === "plan" ? "plan" : "build";
+  const permissions = config.permissions === "edits" || config.permissions === "all" ? config.permissions : "ask";
+  const editNeedsApproval = permissions === "ask";
+  const commandNeedsApproval = permissions !== "all";
+
+  const readTools = {
     list_project_files: tool({
       description: "List files in the selected project. Use a glob to focus the result.",
       inputSchema: z.object({
@@ -201,15 +227,30 @@ export function createProjectTools(projectPath) {
       },
     }),
 
+    request_mode_change: tool({
+      description: "Ask the user to switch between Plan and Build mode. Use this only when the transition is genuinely useful. The user must approve it.",
+      inputSchema: z.object({
+        targetMode: z.enum(["plan", "build"]),
+        reason: z.string().min(1).describe("A concise explanation of why changing modes is the right next step"),
+      }),
+      needsApproval: true,
+      execute: async ({ targetMode, reason }) => ({ targetMode, reason, changed: true }),
+    }),
+  };
+
+  if (mode === "plan") return readTools;
+
+  return {
+    ...readTools,
     replace_in_project_file: tool({
-      description: "Replace one exact, unique text occurrence in a project file. Requires user approval.",
+      description: "Replace one exact, unique text occurrence in a project file. Approval follows the active permission policy.",
       inputSchema: z.object({
         path: z.string(),
         oldText: z.string().min(1),
         newText: z.string(),
         reason: z.string().describe("A concise explanation shown to the user before approval"),
       }),
-      needsApproval: true,
+      needsApproval: editNeedsApproval,
       execute: async ({ path: filePath, oldText, newText }) => {
         const file = await readTextFile(projectPath, filePath);
         const first = file.text.indexOf(oldText);
@@ -223,13 +264,13 @@ export function createProjectTools(projectPath) {
     }),
 
     write_project_file: tool({
-      description: "Create or replace a UTF-8 text file in the selected project. Requires user approval.",
+      description: "Create or replace a UTF-8 text file in the selected project. Approval follows the active permission policy.",
       inputSchema: z.object({
         path: z.string(),
         content: z.string().max(MAX_FILE_BYTES),
         reason: z.string().describe("A concise explanation shown to the user before approval"),
       }),
-      needsApproval: true,
+      needsApproval: editNeedsApproval,
       execute: async ({ path: filePath, content }) => {
         const { root, target } = await writableProjectPath(projectPath, filePath);
         await mkdir(path.dirname(target), { recursive: true });
@@ -239,13 +280,13 @@ export function createProjectTools(projectPath) {
     }),
 
     run_project_command: tool({
-      description: "Run a shell command with the selected project as its working directory. Requires user approval.",
+      description: "Run a shell command with the selected project as its working directory. Approval follows the active permission policy.",
       inputSchema: z.object({
         command: z.string().min(1),
         reason: z.string().describe("A concise explanation shown to the user before approval"),
         timeoutSeconds: z.number().int().min(1).max(120).default(60),
       }),
-      needsApproval: true,
+      needsApproval: commandNeedsApproval,
       execute: async ({ command, timeoutSeconds }) => {
         const root = await projectRoot(projectPath);
         await access(root, constants.R_OK);

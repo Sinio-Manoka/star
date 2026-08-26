@@ -75,6 +75,7 @@ export function ProjectsView() {
               loadMessages={loadThreadMessages}
               saveMessages={saveThreadMessages}
               renameThread={renameThread}
+              createThread={createThread}
             />
           </div>
         );

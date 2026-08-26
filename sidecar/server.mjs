@@ -71,18 +71,23 @@ async function handleChat(request, response) {
       connectionId: connection.id,
       modelId: body.modelId,
     }, async (lifecycle) => {
+      const agentConfig = {
+        mode: body.agentConfig?.mode === "plan" ? "plan" : "build",
+        permissions: ["edits", "all"].includes(body.agentConfig?.permissions) ? body.agentConfig.permissions : "ask",
+        thinkingEffort: ["low", "high"].includes(body.agentConfig?.thinkingEffort) ? body.agentConfig.thinkingEffort : "medium",
+      };
       if (isAgentKind(connection.kind)) {
         const stream = createUIMessageStream({
           originalMessages: body.messages,
-          execute: ({ writer }) => runAcpTurn({ connection, cwd: body.projectPath, threadId: sessionId, model: body.modelId, messages, writer, lifecycle }),
+          execute: ({ writer }) => runAcpTurn({ connection, cwd: body.projectPath, threadId: sessionId, model: body.modelId, messages, writer, lifecycle, agentConfig }),
           onError: (error) => error instanceof Error ? error.message : String(error),
         });
         return createUIMessageStreamResponse({ stream });
       }
 
       const clientTools = body.tools && Object.keys(body.tools).length ? frontendTools(body.tools) : {};
-      const tools = { ...clientTools, ...createProjectTools(body.projectPath) };
-      const instructions = [body.system, projectAgentInstructions(body.projectName)].filter(Boolean).join("\n\n");
+      const tools = { ...clientTools, ...createProjectTools(body.projectPath, agentConfig) };
+      const instructions = [body.system, projectAgentInstructions(body.projectName, agentConfig)].filter(Boolean).join("\n\n");
       const agent = new ToolLoopAgent({
         id: "star-project-agent",
         model: createProviderModel(connection, body.modelId),

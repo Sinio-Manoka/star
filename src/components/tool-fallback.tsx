@@ -8,6 +8,8 @@ import {
   FilePenLineIcon,
   FilePlusIcon,
   LoaderIcon,
+  HammerIcon,
+  ListChecksIcon,
   ShieldCheckIcon,
   SquareTerminalIcon,
   XCircleIcon,
@@ -33,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { setPendingApproval } from "@/features/ai/approval-status";
 import { Button } from "@/components/ui/button";
 import { respondAiPermission } from "@/features/ai/api";
+import { setAgentConfig, type AgentMode } from "@/features/ai/agent-config";
 
 const ANIMATION_DURATION = 200;
 
@@ -633,17 +636,28 @@ function approvalPresentation(toolName: string, args: Record<string, unknown>) {
       return { Icon: FilePenLineIcon, title: "Edit file", detail: pathValue ?? "Project file", mono: false };
     case "acp_permission":
       return { Icon: ShieldCheckIcon, title: "Agent permission", detail: typeof args.title === "string" ? args.title : "Permission requested", mono: false };
+    case "request_mode_change": {
+      const targetMode = args.targetMode === "plan" ? "plan" : "build";
+      return {
+        Icon: targetMode === "plan" ? ListChecksIcon : HammerIcon,
+        title: targetMode === "plan" ? "Switch to Plan" : "Start building",
+        detail: typeof args.reason === "string" ? args.reason : `Change to ${targetMode} mode`,
+        mono: false,
+      };
+    }
     default:
       return { Icon: ShieldCheckIcon, title: "Allow action", detail: toolName.replaceAll("_", " "), mono: false };
   }
 }
 
-function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
+function PendingToolApprovalCard({ toolCall, threadId }: { toolCall: PendingTool; threadId?: string }) {
   const aui = useAui();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string>();
   const args = parseToolArgs(toolCall.argsText);
   const isAcpPermission = toolCall.toolName === "acp_permission";
+  const isModeChange = toolCall.toolName === "request_mode_change";
+  const targetMode: AgentMode = args.targetMode === "plan" ? "plan" : "build";
   const acpInput = args as AcpPermissionInput;
   const reason = typeof args.reason === "string" ? args.reason : undefined;
   const presentation = approvalPresentation(toolCall.toolName, args);
@@ -657,6 +671,9 @@ function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
       if (isAcpPermission && "optionId" in response) {
         await respondAiPermission(toolCall.toolCallId, response.optionId);
         return;
+      }
+      if (isModeChange && "approved" in response && response.approved && threadId) {
+        setAgentConfig(threadId, { mode: targetMode });
       }
       const part = aui.thread.message({ id: toolCall.messageId }).part({ toolCallId: toolCall.toolCallId });
       if (toolCall.approval) part.respondToToolApproval(response);
@@ -688,8 +705,12 @@ function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
           </Button>
         )) : (
           <>
-            <Button size="xs" onClick={() => void respond({ approved: true })}>Allow</Button>
-            <Button size="xs" variant="ghost" onClick={() => void respond({ approved: false })}>Deny</Button>
+            <Button size="xs" onClick={() => void respond({ approved: true })}>
+              {isModeChange ? (targetMode === "build" ? "Start building" : "Switch to plan") : "Allow"}
+            </Button>
+            <Button size="xs" variant="ghost" onClick={() => void respond({ approved: false })}>
+              {isModeChange ? (targetMode === "build" ? "Keep planning" : "Keep building") : "Deny"}
+            </Button>
           </>
         )}
       </div>
@@ -710,7 +731,7 @@ function PendingToolApprovalDock({ threadId }: { threadId?: string }) {
 
   return (
     <div className="aui-pending-tool-approvals flex w-full flex-col gap-2" role="region" aria-label="Actions awaiting approval">
-      {pendingTools.map((toolCall) => <PendingToolApprovalCard key={toolCall.toolCallId} toolCall={toolCall} />)}
+      {pendingTools.map((toolCall) => <PendingToolApprovalCard key={toolCall.toolCallId} toolCall={toolCall} threadId={threadId} />)}
     </div>
   );
 }

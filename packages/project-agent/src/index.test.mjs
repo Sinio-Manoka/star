@@ -42,6 +42,29 @@ describe("project agent tools", () => {
     expect(tools.replace_in_project_file.needsApproval).toBe(true);
     expect(tools.write_project_file.needsApproval).toBe(true);
     expect(tools.run_project_command.needsApproval).toBe(true);
+    expect(tools.request_mode_change.needsApproval).toBe(true);
     expect(projectAgentInstructions("Demo")).toContain("coding agent");
+  });
+
+  it("makes Plan mode read-only and guides the agent toward an approved Build transition", () => {
+    const tools = createProjectTools(root, { mode: "plan" });
+    expect(tools.read_project_file).toBeDefined();
+    expect(tools.request_mode_change).toBeDefined();
+    expect(tools.write_project_file).toBeUndefined();
+    expect(tools.replace_in_project_file).toBeUndefined();
+    expect(tools.run_project_command).toBeUndefined();
+    expect(projectAgentInstructions("Demo", { mode: "plan" })).toContain("do not modify files");
+  });
+
+  it("applies granular Build permission presets", () => {
+    const edits = createProjectTools(root, { mode: "build", permissions: "edits" });
+    expect(edits.write_project_file.needsApproval).toBe(false);
+    expect(edits.replace_in_project_file.needsApproval).toBe(false);
+    expect(edits.run_project_command.needsApproval).toBe(true);
+
+    const all = createProjectTools(root, { mode: "build", permissions: "all" });
+    expect(all.write_project_file.needsApproval).toBe(false);
+    expect(all.run_project_command.needsApproval).toBe(false);
+    expect(all.request_mode_change.needsApproval).toBe(true);
   });
 });

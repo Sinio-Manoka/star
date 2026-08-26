@@ -16,6 +16,8 @@ import {
   requestAiRuntime,
 } from "@/features/ai/api";
 import { ComposerModelPicker } from "@/features/ai/ComposerModelPicker";
+import { AgentControls } from "@/features/ai/AgentControls";
+import { getAgentConfig } from "@/features/ai/agent-config";
 
 type ProjectAssistantProps = {
   projectId: string;
@@ -26,6 +28,7 @@ type ProjectAssistantProps = {
   loadMessages(threadId: string): Promise<unknown[]>;
   saveMessages(threadId: string, messages: unknown[]): Promise<void>;
   renameThread(threadId: string, title: string): Promise<void>;
+  createThread(): Promise<unknown>;
 };
 
 type ProjectAssistantRuntimeProps = ProjectAssistantProps & {
@@ -50,6 +53,7 @@ function ProjectAssistantRuntime({
   initialMessages,
   saveMessages,
   renameThread,
+  createThread,
 }: ProjectAssistantRuntimeProps) {
   const messageSaveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const titleQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -80,6 +84,7 @@ function ProjectAssistantRuntime({
         conversationId: threadId ?? `draft:${projectPath}`,
         connectionId: selection?.connectionId,
         modelId: selection?.modelId,
+        agentConfig: getAgentConfig(threadId ?? `draft:${projectPath}`),
       };
     },
     fetch: async (input, init) => {
@@ -156,11 +161,41 @@ function ProjectAssistantRuntime({
     adapters: { dictation: dictationAdapter },
   });
 
+  const compactSession = () => {
+    if (!threadId || runtime.thread.getState().isRunning) return;
+    const messages = runtime.thread.exportExternalState() as UIMessage[];
+    if (messages.length < 6) return;
+    const preserved = messages.slice(-4);
+    const summary = messages.slice(0, -4).map((message) => {
+      const text = message.parts.flatMap((part) => {
+        if (part.type === "text") return [part.text];
+        if (part.type.startsWith("tool-")) return [`[${part.type.slice(5)}]`];
+        return [];
+      }).join(" ").replace(/\s+/g, " ").trim();
+      return text ? `${message.role}: ${text}` : "";
+    }).filter(Boolean).join("\n").slice(-12_000);
+    const compacted: UIMessage[] = [
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        parts: [{ type: "text", text: `Compacted conversation context:\n${summary}` }],
+      },
+      ...preserved,
+    ];
+    runtime.thread.importExternalState(compacted);
+    messageSaveQueue.current = messageSaveQueue.current
+      .catch(() => undefined)
+      .then(() => saveMessages(threadId, structuredClone(compacted)));
+  };
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <Thread
         threadId={threadId}
         modelPicker={<ComposerModelPicker projectPath={projectPath} />}
+        agentControls={threadId ? <AgentControls threadId={threadId} /> : undefined}
+        onNewSession={() => { void createThread(); }}
+        onCompactSession={compactSession}
       />
     </AssistantRuntimeProvider>
   );

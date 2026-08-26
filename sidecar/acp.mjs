@@ -23,6 +23,37 @@ function modelOption(record) {
     && (option.category === "model" || /model/i.test(`${option.id} ${option.name}`)));
 }
 
+function matchingSelectOption(record, patterns) {
+  return record.configOptions?.find((option) => option.type === "select"
+    && patterns.some((pattern) => pattern.test(`${option.category || ""} ${option.id || ""} ${option.name || ""}`)));
+}
+
+async function setSelectOption(record, option, requestedValue) {
+  if (!option || option.currentValue === requestedValue) return;
+  const match = flattenOptions(option).find((item) => item.value === requestedValue
+    || item.name?.toLowerCase() === requestedValue.toLowerCase());
+  if (!match) return;
+  const result = await record.context.request(acp.methods.agent.session.setConfigOption, {
+    sessionId: record.session.sessionId, configId: option.id, value: match.value,
+  });
+  record.configOptions = result.configOptions || record.configOptions;
+}
+
+async function selectAgentConfig(record, config = {}) {
+  await setSelectOption(record, matchingSelectOption(record, [/\bmode\b/i]), config.mode === "plan" ? "plan" : "build");
+  await setSelectOption(record, matchingSelectOption(record, [/thinking/i, /reasoning/i, /effort/i]), config.thinkingEffort || "medium");
+}
+
+function automaticPermissionOption(record, params) {
+  const preset = record.agentConfig?.permissions || "ask";
+  if (preset === "ask") return undefined;
+  const description = `${params.toolCall?.title || ""} ${params.toolCall?.kind || ""}`;
+  if (preset === "edits" && !/(write|edit|replace|create|delete|move|rename|file)/i.test(description)) return undefined;
+  const options = params.options || [];
+  return options.find((option) => option.kind === "allow-always")?.optionId
+    || options.find((option) => option.kind === "allow-once")?.optionId;
+}
+
 function startRecord(connection, cwd, key) {
   if (!connection.command?.trim()) throw new Error(`No ACP launch command is configured for ${connection.label}.`);
   const ready = deferred();
@@ -43,6 +74,8 @@ function startRecord(connection, cwd, key) {
   const app = acp.client({ name: "star" })
     .onRequest(acp.methods.client.session.requestPermission, async ({ params }) => {
       if (!record.writer) return { outcome: { outcome: "cancelled" } };
+      const automaticOptionId = automaticPermissionOption(record, params);
+      if (automaticOptionId) return { outcome: { outcome: "selected", optionId: automaticOptionId } };
       const permissionId = `acp-permission-${randomUUID()}`;
       record.writer.write({
         type: "tool-input-available", toolCallId: permissionId, toolName: "acp_permission",
@@ -126,13 +159,19 @@ function writeUpdate(record, update, state) {
   } else if (update.sessionUpdate === "config_option_update") record.configOptions = update.configOptions;
 }
 
-export async function runAcpTurn({ connection, cwd, threadId, model, messages, writer, lifecycle }) {
+export async function runAcpTurn({ connection, cwd, threadId, model, messages, writer, lifecycle, agentConfig }) {
   if (!cwd) throw new Error("Select a project before starting a coding agent.");
   const record = await getRecord(connection, cwd, threadId || "draft");
   if (record.writer) throw new Error("This coding-agent conversation is already running.");
   await selectModel(record, model);
+  record.agentConfig = agentConfig;
+  await selectAgentConfig(record, agentConfig);
   const message = [...messages].reverse().find((item) => item.role === "user");
-  const prompt = (message?.parts || []).filter((part) => part.type === "text").map((part) => part.text).join("\n");
+  const userPrompt = (message?.parts || []).filter((part) => part.type === "text").map((part) => part.text).join("\n");
+  const modePrompt = agentConfig?.mode === "plan"
+    ? "[Star Plan mode: inspect and plan only. Do not modify files or run mutating commands. End with a concrete implementation plan.]"
+    : "[Star Build mode: implement the request and verify the result.]";
+  const prompt = `${modePrompt}\n\n${userPrompt}`;
   if (!prompt) throw new Error("The coding agent needs a text prompt.");
   const state = { textId: `acp-text-${randomUUID()}`, reasoningId: `acp-reasoning-${randomUUID()}`, textOpen: false, reasoningOpen: false, tools: new Map() };
   record.writer = writer;

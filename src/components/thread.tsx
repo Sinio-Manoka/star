@@ -49,26 +49,29 @@ import {
   type FileMessagePartComponent,
   type ImageMessagePartComponent,
   type ToolCallMessagePartComponent,
-  type Unstable_SlashCommand,
-  unstable_useSlashCommandAdapter,
+  type Unstable_TriggerItem,
   useAui,
   useAuiState,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BrainIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
   FileSearchIcon,
+  HammerIcon,
   ListChecksIcon,
+  MessageSquarePlusIcon,
   MicIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
   SearchCodeIcon,
+  ShieldCheckIcon,
   SquareIcon,
   TestTube2Icon,
   WandSparklesIcon,
@@ -82,6 +85,7 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
+import { setAgentConfig } from "@/features/ai/agent-config";
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 
@@ -109,6 +113,9 @@ export type ThreadProps = {
   threadId?: string;
   projectPicker?: ReactNode;
   modelPicker?: ReactNode;
+  agentControls?: ReactNode;
+  onNewSession?: () => void;
+  onCompactSession?: () => void;
 };
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
@@ -155,21 +162,27 @@ export const Thread: FC<ThreadProps> = ({
   threadId,
   projectPicker,
   modelPicker,
+  agentControls,
+  onNewSession,
+  onCompactSession,
 }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} />
+      <ThreadRoot isEmpty={isEmpty} threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({
+const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({
   isEmpty,
   threadId,
   projectPicker,
   modelPicker,
+  agentControls,
+  onNewSession,
+  onCompactSession,
 }) => {
   const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
 
@@ -221,7 +234,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: Reac
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
             <PendingToolApprovalDock threadId={threadId} />
-            <Composer projectPicker={projectPicker} modelPicker={modelPicker} />
+            <Composer threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>
@@ -279,40 +292,85 @@ const ThreadSuggestionItem: FC = () => {
 };
 
 const COMMAND_ICONS = {
+  work: WandSparklesIcon,
+  mode: HammerIcon,
+  permissions: ShieldCheckIcon,
+  session: MessageSquarePlusIcon,
+  thinking: BrainIcon,
   review: FileSearchIcon,
   explain: SearchCodeIcon,
   plan: ListChecksIcon,
   fix: WandSparklesIcon,
   test: TestTube2Icon,
+  build: HammerIcon,
+  new: MessageSquarePlusIcon,
 };
 
-const SlashCommands: FC = () => {
+type SlashCommand = {
+  id: string;
+  category: "work" | "mode" | "permissions" | "session" | "thinking";
+  label: string;
+  description: string;
+  icon: keyof typeof COMMAND_ICONS;
+  execute: () => void;
+};
+
+const SlashCommands: FC<{ threadId?: string; onNewSession?: () => void; onCompactSession?: () => void }> = ({ threadId, onNewSession, onCompactSession }) => {
   const aui = useAui();
-  const commands = useMemo<readonly Unstable_SlashCommand[]>(() => {
+  const commands = useMemo<readonly SlashCommand[]>(() => {
     const run = (prompt: string) => {
       queueMicrotask(() => {
         aui.composer.setText(prompt);
         aui.composer.send();
       });
     };
+    const configure = (patch: Parameters<typeof setAgentConfig>[1]) => {
+      if (threadId) setAgentConfig(threadId, patch);
+    };
     return [
-      { id: "review", description: "Review the current project changes", icon: "review", execute: () => run("Review the current project changes. Identify important issues and suggest concrete improvements.") },
-      { id: "explain", description: "Explain the relevant code and behavior", icon: "explain", execute: () => run("Explain the relevant code and behavior for my current task in clear terms.") },
-      { id: "plan", description: "Create an implementation plan", icon: "plan", execute: () => run("Create a concise implementation plan for my current task before making changes.") },
-      { id: "fix", description: "Find and fix the current problem", icon: "fix", execute: () => run("Investigate the current problem, implement the appropriate fix, and verify it.") },
-      { id: "test", description: "Run the relevant project checks", icon: "test", execute: () => run("Run the relevant tests and checks for the current project, then fix any failures caused by the current work.") },
+      { id: "review", category: "work", label: "Review project", description: "Review the current project changes", icon: "review", execute: () => run("Review the current project changes. Identify important issues and suggest concrete improvements.") },
+      { id: "explain", category: "work", label: "Explain code", description: "Explain the relevant code and behavior", icon: "explain", execute: () => run("Explain the relevant code and behavior for my current task in clear terms.") },
+      { id: "fix", category: "work", label: "Fix issue", description: "Find and fix the current problem", icon: "fix", execute: () => run("Investigate the current problem, implement the appropriate fix, and verify it.") },
+      { id: "test", category: "work", label: "Run checks", description: "Run the relevant project checks", icon: "test", execute: () => run("Run the relevant tests and checks for the current project, then fix any failures caused by the current work.") },
+      { id: "mode-build", category: "mode", label: "Build", description: "Implement changes with project tools", icon: "build", execute: () => configure({ mode: "build" }) },
+      { id: "mode-plan", category: "mode", label: "Plan", description: "Explore and plan without modifying files", icon: "plan", execute: () => configure({ mode: "plan" }) },
+      { id: "permission-ask", category: "permissions", label: "Ask every time", description: "Approve every edit and command", icon: "permissions", execute: () => configure({ permissions: "ask" }) },
+      { id: "permission-edits", category: "permissions", label: "Allow file edits", description: "Approve commands, allow project edits", icon: "permissions", execute: () => configure({ permissions: "edits" }) },
+      { id: "permission-all", category: "permissions", label: "Allow everything", description: "Allow project edits and commands", icon: "permissions", execute: () => configure({ permissions: "all" }) },
+      { id: "session-new", category: "session", label: "New chat", description: "Start a separate agent session", icon: "new", execute: () => onNewSession?.() },
+      { id: "session-compact", category: "session", label: "Compact context", description: "Summarize this chat to reduce context", icon: "session", execute: () => onCompactSession?.() },
+      { id: "thinking-low", category: "thinking", label: "Low", description: "Fast, concise reasoning", icon: "thinking", execute: () => configure({ thinkingEffort: "low" }) },
+      { id: "thinking-medium", category: "thinking", label: "Medium", description: "Balanced reasoning", icon: "thinking", execute: () => configure({ thinkingEffort: "medium" }) },
+      { id: "thinking-high", category: "thinking", label: "High", description: "Thorough reasoning and verification", icon: "thinking", execute: () => configure({ thinkingEffort: "high" }) },
     ];
-  }, [aui]);
-  const slash = unstable_useSlashCommandAdapter({
-    commands,
-    removeOnExecute: true,
-    iconMap: COMMAND_ICONS,
-  });
+  }, [aui, onCompactSession, onNewSession, threadId]);
+  const slash = useMemo(() => {
+    const toItem = (command: SlashCommand): Unstable_TriggerItem => ({ id: command.id, type: "command", label: command.label, description: command.description, metadata: { icon: command.icon } });
+    const categories = [
+      { id: "work", label: "Actions" },
+      { id: "mode", label: "Mode" },
+      { id: "permissions", label: "Permissions" },
+      { id: "session", label: "Session" },
+      { id: "thinking", label: "Thinking" },
+    ] as const;
+    return {
+      adapter: {
+        categories: () => categories,
+        categoryItems: (categoryId: string) => commands.filter((command) => command.category === categoryId).map(toItem),
+        search: (query: string) => {
+          const value = query.toLowerCase();
+          return commands.filter((command) => !value || `${command.label} ${command.description}`.toLowerCase().includes(value)).map(toItem);
+        },
+      },
+      action: { onExecute: (item: Unstable_TriggerItem) => commands.find((command) => command.id === item.id)?.execute(), removeOnExecute: true },
+      iconMap: COMMAND_ICONS,
+    };
+  }, [commands]);
 
   return <ComposerTriggerPopover char="/" {...slash} />;
 };
 
-const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
+const Composer: FC<{ threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({ threadId, projectPicker, modelPicker, agentControls, onNewSession, onCompactSession }) => {
   return (
     <ComposerPrimitive.Unstable_TriggerPopoverRoot>
       <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
@@ -332,20 +390,21 @@ const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ 
                       autoFocus
                       enterKeyHint="send"
                       aria-label="Message input"
-                    /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} /></ComposerPrimitive.AttachmentDropzone>
-        <SlashCommands />
+                    /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} /></ComposerPrimitive.AttachmentDropzone>
+        <SlashCommands threadId={threadId} onNewSession={onNewSession} onCompactSession={onCompactSession} />
       </ComposerPrimitive.Root>
     </ComposerPrimitive.Unstable_TriggerPopoverRoot>
   );
 };
 
-const ComposerAction: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ projectPicker, modelPicker }) => {
+const ComposerAction: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode }> = ({ projectPicker, modelPicker, agentControls }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-1.5">
         <ComposerAddAttachment />
         {projectPicker}
         {modelPicker}
+        {agentControls}
       </div>
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
