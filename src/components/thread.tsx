@@ -9,6 +9,13 @@ import { File } from "@/components/file";
 import { ThreadFollowupSuggestions } from "@/components/follow-up-suggestions";
 import { Image } from "@/components/image";
 import { MarkdownText } from "@/components/markdown-text";
+import { MessageTiming } from "@/components/message-timing";
+import {
+  ComposerQuotePreview,
+  QuoteBlock,
+  SelectionToolbar,
+} from "@/components/quote";
+import { Sources } from "@/components/sources";
 import {
   Reasoning,
   ReasoningContent,
@@ -99,6 +106,7 @@ export type ThreadComponents = {
 
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
+  threadId?: string;
   projectPicker?: ReactNode;
   modelPicker?: ReactNode;
 };
@@ -144,6 +152,7 @@ const ThreadHistorySkeleton: FC = () => (
 
 export const Thread: FC<ThreadProps> = ({
   components = EMPTY_COMPONENTS,
+  threadId,
   projectPicker,
   modelPicker,
 }) => {
@@ -151,13 +160,14 @@ export const Thread: FC<ThreadProps> = ({
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} projectPicker={projectPicker} modelPicker={modelPicker} />
+      <ThreadRoot isEmpty={isEmpty} threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} />
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({
+const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({
   isEmpty,
+  threadId,
   projectPicker,
   modelPicker,
 }) => {
@@ -174,7 +184,8 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?
       }}
     >
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
+        turnAnchor="bottom"
+        autoScroll
         data-slot="aui_thread-viewport"
         className="relative flex flex-1 flex-col overflow-x-hidden overflow-y-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
@@ -209,7 +220,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
-            <PendingToolApprovalDock />
+            <PendingToolApprovalDock threadId={threadId} />
             <Composer projectPicker={projectPicker} modelPicker={modelPicker} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
@@ -217,6 +228,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; projectPicker?: ReactNode; modelPicker?
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
+      <SelectionToolbar />
     </ThreadPrimitive.Root>
   );
 };
@@ -304,7 +316,7 @@ const Composer: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode }> = ({ 
   return (
     <ComposerPrimitive.Unstable_TriggerPopoverRoot>
       <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-        <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
+        <ComposerPrimitive.AttachmentDropzone render={<div data-slot="aui_composer-shell" className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-1 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))]" />}><ComposerQuotePreview /><ComposerAttachments /><AuiIf condition={(s) => s.composer.dictation != null}>
                         <div className="aui-composer-dictation-status bg-muted text-muted-foreground flex min-h-7 items-center gap-2 rounded-lg px-2.5 text-xs" role="status" aria-live="polite">
                           <span className="relative flex size-2" aria-hidden="true">
                             <span className="bg-destructive absolute inline-flex size-full animate-ping rounded-full opacity-60" />
@@ -446,6 +458,8 @@ const AssistantMessage: FC = () => {
                     <Image {...part} />
                   </div>
                 );
+              case "source":
+                return <Sources {...part} />;
               case "indicator":
                 return (
                   <span
@@ -488,6 +502,7 @@ const AssistantActionBar: FC = () => {
                       <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
                     </AuiIf></ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}><RefreshCwIcon /></ActionBarPrimitive.Reload>
+      <MessageTiming side="top" />
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger render={<TooltipIconButton tooltip="More" className="data-[state=open]:bg-accent" />}><MoreHorizontalIcon /></ActionBarMorePrimitive.Trigger>
         <ActionBarMorePrimitive.Content
@@ -527,6 +542,9 @@ const UserMessage: FC = () => {
 
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content peer bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
+          <MessagePrimitive.Quote>
+            {(quote) => <QuoteBlock {...quote} />}
+          </MessagePrimitive.Quote>
           <MessagePrimitive.Parts
             components={{ File: UserFilePart, Image: UserImagePart }}
           />

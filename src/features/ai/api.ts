@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { AiConnection, AiModelList, AiRuntimeInfo, AiSelection, CliAvailability } from "./types";
+import type { AgentRun } from "@star/agent-runtime/client";
 
 export async function getAiRuntime(): Promise<AiRuntimeInfo> {
   if (!isTauri()) return { endpoint: "http://127.0.0.1:43127/chat", token: "development" };
@@ -93,6 +94,24 @@ export async function respondAiPermission(permissionId: string, optionId: string
   if (!response.ok) {
     const value = await response.json() as { error?: string };
     throw new Error(value.error || "Could not answer permission request");
+  }
+}
+
+export async function listAgentRuns(filters: { sessionId?: string; projectId?: string } = {}): Promise<AgentRun[]> {
+  const query = new URLSearchParams();
+  if (filters.sessionId) query.set("sessionId", filters.sessionId);
+  if (filters.projectId) query.set("projectId", filters.projectId);
+  const response = await requestAiRuntime(`/runs${query.size ? `?${query}` : ""}`);
+  const value = await response.json() as { runs?: AgentRun[]; error?: string };
+  if (!response.ok) throw new Error(value.error || "Could not load agent runs");
+  return value.runs ?? [];
+}
+
+export async function cancelAgentRun(runId: string): Promise<void> {
+  const response = await requestAiRuntime(`/runs/${encodeURIComponent(runId)}/cancel`, { method: "POST" });
+  if (!response.ok && response.status !== 409) {
+    const value = await response.json() as { error?: string };
+    throw new Error(value.error || "Could not cancel agent run");
   }
 }
 

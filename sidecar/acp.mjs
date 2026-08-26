@@ -51,9 +51,11 @@ function startRecord(connection, cwd, key) {
         providerExecuted: true, dynamic: true,
       });
       const choice = deferred();
-      pendingPermissions.set(permissionId, choice);
+      pendingPermissions.set(permissionId, { choice, record });
+      record.lifecycle?.awaitingApproval({ id: permissionId, title: params.toolCall.title || "Permission required" });
       const optionId = await choice.promise;
       pendingPermissions.delete(permissionId);
+      record.lifecycle?.running();
       record.writer?.write({
         type: "tool-output-available", toolCallId: permissionId,
         output: optionId ? { optionId } : { cancelled: true }, providerExecuted: true, dynamic: true,
@@ -124,7 +126,7 @@ function writeUpdate(record, update, state) {
   } else if (update.sessionUpdate === "config_option_update") record.configOptions = update.configOptions;
 }
 
-export async function runAcpTurn({ connection, cwd, threadId, model, messages, writer }) {
+export async function runAcpTurn({ connection, cwd, threadId, model, messages, writer, lifecycle }) {
   if (!cwd) throw new Error("Select a project before starting a coding agent.");
   const record = await getRecord(connection, cwd, threadId || "draft");
   if (record.writer) throw new Error("This coding-agent conversation is already running.");
@@ -134,6 +136,14 @@ export async function runAcpTurn({ connection, cwd, threadId, model, messages, w
   if (!prompt) throw new Error("The coding agent needs a text prompt.");
   const state = { textId: `acp-text-${randomUUID()}`, reasoningId: `acp-reasoning-${randomUUID()}`, textOpen: false, reasoningOpen: false, tools: new Map() };
   record.writer = writer;
+  record.lifecycle = lifecycle;
+  const cancel = () => {
+    for (const pending of pendingPermissions.values()) {
+      if (pending.record === record) pending.choice.resolve(undefined);
+    }
+    void record.context.notify(acp.methods.agent.session.cancel, { sessionId: record.session.sessionId });
+  };
+  lifecycle?.signal.addEventListener("abort", cancel, { once: true });
   writer.write({ type: "start" });
   writer.write({ type: "start-step" });
   try {
@@ -147,7 +157,11 @@ export async function runAcpTurn({ connection, cwd, threadId, model, messages, w
     if (state.reasoningOpen) writer.write({ type: "reasoning-end", id: state.reasoningId });
     writer.write({ type: "finish-step" });
     writer.write({ type: "finish", finishReason: "stop" });
-  } finally { record.writer = undefined; }
+  } finally {
+    lifecycle?.signal.removeEventListener("abort", cancel);
+    record.writer = undefined;
+    record.lifecycle = undefined;
+  }
 }
 
 export async function acpModels(connection, cwd) {
@@ -168,12 +182,12 @@ export async function acpModels(connection, cwd) {
 export function resolveAcpPermission(permissionId, optionId) {
   const pending = pendingPermissions.get(permissionId);
   if (!pending) return false;
-  pending.resolve(optionId || undefined);
+  pending.choice.resolve(optionId || undefined);
   return true;
 }
 
 export function closeAcpSessions() {
-  for (const pending of pendingPermissions.values()) pending.resolve(undefined);
+  for (const pending of pendingPermissions.values()) pending.choice.resolve(undefined);
   pendingPermissions.clear();
   for (const record of sessions.values()) record.close.resolve();
 }

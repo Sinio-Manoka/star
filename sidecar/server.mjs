@@ -1,12 +1,14 @@
 import http from "node:http";
 import { Readable } from "node:stream";
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, stepCountIs, ToolLoopAgent } from "ai";
-import { frontendTools } from "@assistant-ui/ai-sdk";
+import { frontendTools, injectQuoteContext } from "@assistant-ui/ai-sdk";
 import { createProjectTools, projectAgentInstructions } from "@star/project-agent";
+import { AgentRuntime, AgentRuntimeConflictError } from "@star/agent-runtime/server";
 import { acpModels, closeAcpSessions, resolveAcpPermission, runAcpTurn } from "./acp.mjs";
 import {
   assertConnectionReady,
   createProviderModel,
+  formatProviderError,
   isAgentKind,
   listProviderModels,
   testProviderConnection,
@@ -15,6 +17,9 @@ import {
 const port = Number(process.env.STAR_AI_PORT || 43127);
 const token = process.env.STAR_AI_TOKEN || "development";
 const connections = JSON.parse(process.env.STAR_AI_CONNECTIONS || "[]");
+const agentRuntime = new AgentRuntime({
+  storagePath: process.env.STAR_AGENT_RUNTIME_PATH || ".star-agent-runtime",
+});
 
 function json(response, status, value) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" });
@@ -43,25 +48,38 @@ async function sendWebResponse(webResponse, response) {
   });
   if (!webResponse.body) return response.end();
   await new Promise((resolve, reject) => {
-    Readable.fromWeb(webResponse.body).once("error", reject).once("end", resolve).pipe(response);
+    const source = Readable.fromWeb(webResponse.body);
+    const disconnected = () => resolve();
+    response.once("close", disconnected);
+    source.once("error", (error) => response.destroyed ? resolve() : reject(error));
+    source.once("end", resolve).pipe(response);
   });
 }
 
 async function handleChat(request, response) {
   const body = await readJson(request);
+  const messages = injectQuoteContext(body.messages || []);
   const connection = selectedConnection(body.connectionId);
   if (!connection) return json(response, 409, { error: "No AI connection is configured. Open Settings and connect a provider or coding agent." });
-  let webResponse;
   try {
     assertConnectionReady(connection);
-    if (isAgentKind(connection.kind)) {
-      const stream = createUIMessageStream({
-        originalMessages: body.messages,
-        execute: ({ writer }) => runAcpTurn({ connection, cwd: body.projectPath, threadId: body.conversationId || body.id, model: body.modelId, messages: body.messages || [], writer }),
-        onError: (error) => error instanceof Error ? error.message : String(error),
-      });
-      webResponse = createUIMessageStreamResponse({ stream });
-    } else {
+    const sessionId = body.conversationId || body.id;
+    const { response: webResponse } = await agentRuntime.startRun({
+      sessionId,
+      projectId: body.projectId,
+      projectPath: body.projectPath,
+      connectionId: connection.id,
+      modelId: body.modelId,
+    }, async (lifecycle) => {
+      if (isAgentKind(connection.kind)) {
+        const stream = createUIMessageStream({
+          originalMessages: body.messages,
+          execute: ({ writer }) => runAcpTurn({ connection, cwd: body.projectPath, threadId: sessionId, model: body.modelId, messages, writer, lifecycle }),
+          onError: (error) => error instanceof Error ? error.message : String(error),
+        });
+        return createUIMessageStreamResponse({ stream });
+      }
+
       const clientTools = body.tools && Object.keys(body.tools).length ? frontendTools(body.tools) : {};
       const tools = { ...clientTools, ...createProjectTools(body.projectPath) };
       const instructions = [body.system, projectAgentInstructions(body.projectName)].filter(Boolean).join("\n\n");
@@ -73,18 +91,24 @@ async function handleChat(request, response) {
         stopWhen: stepCountIs(20),
       });
       const result = await agent.stream({
-        messages: await convertToModelMessages(body.messages || [], { tools }),
+        messages: await convertToModelMessages(messages, { tools }),
+        abortSignal: lifecycle.signal,
       });
-      webResponse = result.toUIMessageStreamResponse({
+      const reportProviderError = (error) => {
+        const message = formatProviderError(error, connection.label || connection.kind);
+        lifecycle.failed(message);
+        return message;
+      };
+      return result.toUIMessageStreamResponse({
         originalMessages: body.messages,
-        onError: (error) => error instanceof Error ? error.message : String(error),
+        onError: reportProviderError,
       });
-    }
+    });
+    await sendWebResponse(webResponse, response);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return json(response, 500, { error: `AI runtime error: ${message}` });
+    return json(response, error instanceof AgentRuntimeConflictError ? 409 : 500, { error: `AI runtime error: ${message}` });
   }
-  await sendWebResponse(webResponse, response);
 }
 
 function cleanTitle(value) {
@@ -144,6 +168,35 @@ const server = http.createServer(async (request, response) => {
         return json(response, 200, { ok: false, error: message });
       }
     }
+    if (request.method === "GET" && url.pathname === "/runs") {
+      return json(response, 200, {
+        runs: agentRuntime.listRuns({
+          sessionId: url.searchParams.get("sessionId") || undefined,
+          projectId: url.searchParams.get("projectId") || undefined,
+        }),
+      });
+    }
+    const runStreamMatch = url.pathname.match(/^\/runs\/([^/]+)\/stream$/);
+    if (request.method === "GET" && runStreamMatch) {
+      const webResponse = await agentRuntime.resumeRun(decodeURIComponent(runStreamMatch[1]));
+      if (webResponse) return sendWebResponse(webResponse, response);
+      response.writeHead(204, { "access-control-allow-origin": "*" });
+      return response.end();
+    }
+    const runCancelMatch = url.pathname.match(/^\/runs\/([^/]+)\/cancel$/);
+    if (request.method === "POST" && runCancelMatch) {
+      const cancelled = await agentRuntime.cancelRun(decodeURIComponent(runCancelMatch[1]));
+      return cancelled
+        ? json(response, 200, { ok: true })
+        : json(response, 409, { error: "Run is not active" });
+    }
+    const runMatch = url.pathname.match(/^\/runs\/([^/]+)$/);
+    if (request.method === "GET" && runMatch) {
+      const run = agentRuntime.getRun(decodeURIComponent(runMatch[1]));
+      return run
+        ? json(response, 200, { run })
+        : json(response, 404, { error: "Run not found" });
+    }
     if (request.method === "POST" && url.pathname.startsWith("/permissions/")) {
       const body = await readJson(request);
       const permissionId = decodeURIComponent(url.pathname.slice("/permissions/".length));
@@ -159,7 +212,15 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => process.stdout.write(`ready:${port}\n`));
+async function start() {
+  await agentRuntime.initialize();
+  server.listen(port, "127.0.0.1", () => process.stdout.write(`ready:${port}\n`));
+}
+
+void start().catch((error) => {
+  process.stderr.write(`Agent runtime failed to start: ${error instanceof Error ? error.stack || error.message : String(error)}\n`);
+  process.exit(1);
+});
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     closeAcpSessions();

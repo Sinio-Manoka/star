@@ -56,6 +56,51 @@ export type ProviderModelList = {
   warning?: string;
 };
 
+type ProviderErrorShape = {
+  message?: unknown;
+  statusCode?: unknown;
+  cause?: unknown;
+  lastError?: unknown;
+  errors?: unknown;
+};
+
+function providerErrorChain(error: unknown): ProviderErrorShape[] {
+  const results: ProviderErrorShape[] = [];
+  const pending = [error];
+  const seen = new Set<unknown>();
+  while (pending.length) {
+    const value = pending.shift();
+    if (!value || typeof value !== "object" || seen.has(value)) continue;
+    seen.add(value);
+    const shaped = value as ProviderErrorShape;
+    results.push(shaped);
+    if (shaped.lastError) pending.unshift(shaped.lastError);
+    if (shaped.cause) pending.push(shaped.cause);
+    if (Array.isArray(shaped.errors)) pending.push(...[...shaped.errors].reverse());
+  }
+  return results;
+}
+
+export function formatProviderError(error: unknown, providerLabel = "The AI provider"): string {
+  const chain = providerErrorChain(error);
+  const status = chain.map((item) => item.statusCode).find((value): value is number => typeof value === "number");
+
+  if (status === 401 || status === 403) {
+    return `${providerLabel} rejected the credentials (${status}). Check this connection in Settings.`;
+  }
+  if (status === 429) {
+    return `${providerLabel} is rate-limiting requests. Wait a moment or select another model.`;
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return `${providerLabel} is temporarily unavailable (${status}). Try again shortly or select another provider.`;
+  }
+
+  const nestedMessage = chain
+    .map((item) => item.message)
+    .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return nestedMessage || (error instanceof Error ? error.message : String(error));
+}
+
 const cleanBase = (value?: string) => value?.trim().replace(/\/+$/, "");
 
 function requiredKind(connection: RuntimeConnection): ConnectionKind {

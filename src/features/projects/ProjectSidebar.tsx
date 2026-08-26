@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,12 +33,38 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
+import { listAgentRuns } from "@/features/ai/api";
+import { APPROVAL_STATUS_EVENT, hasPendingApproval } from "@/features/ai/approval-status";
+import type { AgentRun } from "@star/agent-runtime/client";
 import { useProjects } from "./ProjectProvider";
 import type { ProjectThread } from "./types";
 
 type ProjectSidebarProps = {
   onOpenProject(): void;
 };
+
+const TERMINAL_RUN_STATUSES = new Set<AgentRun["status"]>([
+  "completed",
+  "failed",
+  "cancelled",
+  "interrupted",
+]);
+
+function seenRunKey(threadId: string) {
+  return `star.agent-runtime.seen.${threadId}`;
+}
+
+function runStatusLabel(status: AgentRun["status"]) {
+  return {
+    queued: "Agent queued",
+    running: "Agent working",
+    "awaiting-approval": "Approval required",
+    completed: "Agent finished",
+    failed: "Agent failed",
+    interrupted: "Agent was interrupted",
+    cancelled: "Agent stopped",
+  }[status];
+}
 
 function ThreadActions({ thread }: { thread: ProjectThread }) {
   const { renameThread, archiveThread, removeThread } = useProjects();
@@ -91,6 +118,70 @@ export function ProjectSidebar({ onOpenProject }: ProjectSidebarProps) {
     createThread,
     selectThread,
   } = useProjects();
+  const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
+  const [seenRevision, setSeenRevision] = useState(0);
+  const [, setApprovalRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setApprovalRevision((revision) => revision + 1);
+    window.addEventListener(APPROVAL_STATUS_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(APPROVAL_STATUS_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProject) {
+      setAgentRuns([]);
+      return;
+    }
+
+    let active = true;
+    let timeout: number | undefined;
+    const refresh = async () => {
+      try {
+        const runs = await listAgentRuns({ projectId: selectedProject.id });
+        if (active) setAgentRuns(runs);
+      } catch {
+        // A sidecar restart should not remove the last known run indicators.
+      } finally {
+        if (active) timeout = window.setTimeout(refresh, 900);
+      }
+    };
+    void refresh();
+    return () => {
+      active = false;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, [selectedProject]);
+
+  const latestRunByThread = useMemo(() => {
+    const latest = new Map<string, AgentRun>();
+    for (const run of agentRuns) {
+      if (!latest.has(run.sessionId)) latest.set(run.sessionId, run);
+    }
+    return latest;
+  }, [agentRuns]);
+
+  const markRunSeen = useCallback((threadId: string, run?: AgentRun) => {
+    if (!run || !TERMINAL_RUN_STATUSES.has(run.status)) return;
+    localStorage.setItem(seenRunKey(threadId), run.id);
+    setSeenRevision((revision) => revision + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedThread) return;
+    markRunSeen(selectedThread.id, latestRunByThread.get(selectedThread.id));
+  }, [latestRunByThread, markRunSeen, selectedThread]);
+
+  const visibleRun = useCallback((threadId: string) => {
+    const run = latestRunByThread.get(threadId);
+    if (!run) return undefined;
+    if (!TERMINAL_RUN_STATUSES.has(run.status)) return run;
+    return localStorage.getItem(seenRunKey(threadId)) === run.id ? undefined : run;
+  }, [latestRunByThread, seenRevision]);
 
   const newChat = async () => {
     await createThread();
@@ -182,24 +273,32 @@ export function ProjectSidebar({ onOpenProject }: ProjectSidebarProps) {
                     <SidebarMenuSkeleton showIcon />
                   </>
                 )}
-                {threads.map((thread) => (
-                  <SidebarMenuItem
-                    key={thread.id}
-                    data-current={selectedThread?.id === thread.id}
-                  >
-                    <SidebarMenuButton
-                      isActive={selectedThread?.id === thread.id}
-                      onClick={() => {
-                        selectThread(thread.id);
-                        onOpenProject();
-                      }}
-                      tooltip={thread.title}
+                {threads.map((thread) => {
+                  const run = visibleRun(thread.id);
+                  const runStatus = hasPendingApproval(thread.id) ? "awaiting-approval" : run?.status;
+                  return (
+                    <SidebarMenuItem
+                      key={thread.id}
+                      data-current={selectedThread?.id === thread.id}
+                      data-run-status={runStatus}
+                      title={runStatus ? runStatusLabel(runStatus) : undefined}
                     >
-                      <span>{thread.title}</span>
-                    </SidebarMenuButton>
-                    <ThreadActions thread={thread} />
-                  </SidebarMenuItem>
-                ))}
+                      <SidebarMenuButton
+                        isActive={selectedThread?.id === thread.id}
+                        onClick={() => {
+                          markRunSeen(thread.id, latestRunByThread.get(thread.id));
+                          selectThread(thread.id);
+                          onOpenProject();
+                        }}
+                        tooltip={thread.title}
+                      >
+                        <span>{thread.title}</span>
+                      </SidebarMenuButton>
+                      {runStatus && <span className="sr-only" role="status">{runStatusLabel(runStatus)}</span>}
+                      <ThreadActions thread={thread} />
+                    </SidebarMenuItem>
+                  );
+                })}
                 {!loading && threads.length === 0 && (
                   <SidebarMenuItem>
                     <SidebarMenuButton onClick={() => void newChat()}>

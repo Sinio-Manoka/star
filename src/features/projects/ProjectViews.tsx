@@ -67,6 +67,7 @@ export function ProjectsView() {
             key={`${session.projectId}:${session.threadId}`}
           >
             <ProjectAssistant
+              projectId={session.projectId}
               projectName={session.projectName}
               projectPath={session.projectPath}
               threadId={session.threadId}

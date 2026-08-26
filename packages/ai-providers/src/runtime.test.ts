@@ -4,6 +4,7 @@ import { providerDefinitions } from "./catalog";
 import {
   assertConnectionReady,
   createProviderModel,
+  formatProviderError,
   listProviderModels,
   testProviderConnection,
 } from "./runtime";
@@ -11,6 +12,14 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("provider runtime contract", () => {
+  it("turns retryable gateway failures into a concise provider message", () => {
+    const lastError = Object.assign(new Error("Bad Gateway"), { statusCode: 502 });
+    const retryError = Object.assign(new Error("Failed after 3 attempts"), { lastError, errors: [lastError] });
+
+    expect(formatProviderError(retryError, "MiniMax"))
+      .toBe("MiniMax is temporarily unavailable (502). Try again shortly or select another provider.");
+  });
+
   it("keeps MiniMax generation on its Anthropic-compatible provider", () => {
     const model = createProviderModel({
       kind: "minimax",

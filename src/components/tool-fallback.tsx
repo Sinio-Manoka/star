@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircleIcon,
   CheckIcon,
@@ -30,6 +30,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { setPendingApproval } from "@/features/ai/approval-status";
 import { Button } from "@/components/ui/button";
 import { respondAiPermission } from "@/features/ai/api";
 
@@ -172,21 +173,19 @@ function ToolFallbackTrigger({
       <span
         data-slot="tool-fallback-trigger-label"
         className={cn(
-          "aui-tool-fallback-trigger-label-wrapper relative flex min-w-0 flex-1 items-center gap-2 text-start",
+          "aui-tool-fallback-trigger-label-wrapper relative flex min-w-0 flex-1 items-baseline gap-2 text-start",
           isCancelled && "text-muted-foreground line-through",
         )}
       >
-        <b className="text-foreground truncate font-medium capitalize">{displayName}</b>
+        <b
+          className={cn(
+            "text-foreground min-w-0 truncate font-medium capitalize",
+            isRunning && "shimmer motion-reduce:animate-none",
+          )}
+        >
+          {displayName}
+        </b>
         <span className="text-muted-foreground ml-auto shrink-0 text-[11px]">{label}</span>
-        {isRunning && (
-          <span
-            aria-hidden
-            data-slot="tool-fallback-trigger-shimmer"
-            className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
-          >
-            <b className="capitalize">{displayName}</b>
-          </span>
-        )}
       </span>
       <ToolFallbackDuration />
       <ChevronDownIcon
@@ -672,13 +671,13 @@ function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
   if (submitted) return null;
 
   return (
-    <div className="border-border/65 bg-card/95 animate-in fade-in slide-in-from-bottom-1 flex w-full flex-wrap items-center gap-2 rounded-lg border p-2 shadow-md shadow-black/8 duration-150" title={reason}>
-      <span className="border-border/55 bg-background flex size-7 shrink-0 items-center justify-center rounded-md border">
+    <div className="border-border/65 bg-card/95 animate-in fade-in slide-in-from-bottom-1 flex w-full flex-wrap items-baseline gap-2 rounded-lg border p-2 shadow-md shadow-black/8 duration-150" title={reason}>
+      <span className="border-border/55 bg-background flex size-7 shrink-0 items-center justify-center self-center rounded-md border">
         <Icon className="size-3.5" />
       </span>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <p className="shrink-0 text-[13px] font-medium">{presentation.title}</p>
-        <span className={cn("text-muted-foreground min-w-0 truncate text-xs", presentation.mono && "bg-muted/60 rounded px-1.5 py-0.5 font-mono text-[11px]")}>
+      <div className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
+        <p className="min-w-0 shrink truncate text-[13px] font-medium">{presentation.title}</p>
+        <span className={cn("text-muted-foreground min-w-0 flex-1 truncate text-xs", presentation.mono && "bg-muted/60 rounded px-1.5 py-0.5 font-mono text-[11px]")}>
           {presentation.detail}
         </span>
       </div>
@@ -699,9 +698,14 @@ function PendingToolApprovalCard({ toolCall }: { toolCall: PendingTool }) {
   );
 }
 
-function PendingToolApprovalDock() {
+function PendingToolApprovalDock({ threadId }: { threadId?: string }) {
   const messages = useAuiState((state) => state.thread.messages);
   const pendingTools = useMemo(() => pendingToolsFromMessages(messages), [messages]);
+
+  useEffect(() => {
+    if (threadId) setPendingApproval(threadId, pendingTools.length > 0);
+  }, [pendingTools.length, threadId]);
+
   if (!pendingTools.length) return null;
 
   return (

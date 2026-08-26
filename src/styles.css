@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
+@source "../node_modules/@streamdown/math/dist/*.js";
+@source "../node_modules/@streamdown/mermaid/dist/*.js";
+@source "../node_modules/@streamdown/cjk/dist/*.js";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
@@ -261,6 +266,74 @@ button { font: inherit; }
 
 .project-chat-list [data-slot="sidebar-menu-item"]:hover [data-slot="sidebar-menu-action"] {
   transform: scale(1);
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status]::before {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: -7px;
+  width: 2px;
+  border-radius: 999px;
+  content: "";
+  animation: conversation-status-enter 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="queued"]::before,
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="running"]::before {
+  background: color-mix(in srgb, #69a7ff 22%, transparent);
+  box-shadow: 0 0 7px color-mix(in srgb, #69a7ff 34%, transparent);
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="queued"]::after,
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="running"]::after {
+  position: absolute;
+  top: 3px;
+  left: -7px;
+  z-index: 1;
+  width: 2px;
+  height: 8px;
+  border-radius: 999px;
+  background: #69a7ff;
+  box-shadow: 0 0 6px #69a7ff, 0 0 11px color-mix(in srgb, #69a7ff 72%, transparent);
+  content: "";
+  animation: conversation-run-travel 1.15s ease-in-out infinite alternate;
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="awaiting-approval"]::before {
+  background: #e6ad55;
+  box-shadow: 0 0 6px #e6ad55, 0 0 11px color-mix(in srgb, #e6ad55 62%, transparent);
+  animation: conversation-run-pulse 1.25s ease-in-out infinite;
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="completed"]::before {
+  background: #63c78b;
+  box-shadow: 0 0 6px #63c78b, 0 0 11px color-mix(in srgb, #63c78b 62%, transparent);
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="failed"]::before,
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="interrupted"]::before {
+  background: #ed6a72;
+  box-shadow: 0 0 6px #ed6a72, 0 0 11px color-mix(in srgb, #ed6a72 62%, transparent);
+}
+
+.project-chat-list [data-slot="sidebar-menu-item"][data-run-status="cancelled"]::before {
+  background: var(--text-subtle);
+  box-shadow: none;
+}
+
+@keyframes conversation-run-travel {
+  from { transform: translateY(0); }
+  to { transform: translateY(18px); }
+}
+
+@keyframes conversation-run-pulse {
+  50% { opacity: .4; }
+}
+
+@keyframes conversation-status-enter {
+  from { opacity: 0; transform: scaleY(.35); }
+  to { opacity: 1; transform: scaleY(1); }
 }
 
 @keyframes conversation-tree-enter {
@@ -1193,6 +1266,8 @@ button { font: inherit; }
   .terminal-control { animation: none; transition: none; }
   .project-chat-list::before,
   .project-chat-list [data-slot="sidebar-menu-item"][data-current="true"]::before,
+  .project-chat-list [data-slot="sidebar-menu-item"][data-run-status]::before,
+  .project-chat-list [data-slot="sidebar-menu-item"][data-run-status]::after,
   .project-chat-list [data-slot="sidebar-menu-item"] { animation: none; }
   .project-chat-list [data-slot="sidebar-menu-button"],
   .project-chat-list [data-slot="sidebar-menu-action"] { transition: none; }

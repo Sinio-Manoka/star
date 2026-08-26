@@ -178,6 +178,11 @@ pub fn restart(app: &AppHandle, state: &AiState) -> Result<(), String> {
         })
         .collect();
     let encoded = serde_json::to_string(&sidecar_connections).map_err(|error| error.to_string())?;
+    let agent_runtime_path = state
+        .config_path
+        .parent()
+        .ok_or("AI configuration directory is unavailable")?
+        .join("agent-runtime");
 
     let command = app
         .shell()
@@ -185,7 +190,8 @@ pub fn restart(app: &AppHandle, state: &AiState) -> Result<(), String> {
         .map_err(|error| format!("Could not locate AI runtime: {error}"))?
         .env("STAR_AI_PORT", port.to_string())
         .env("STAR_AI_TOKEN", &token)
-        .env("STAR_AI_CONNECTIONS", encoded);
+        .env("STAR_AI_CONNECTIONS", encoded)
+        .env("STAR_AGENT_RUNTIME_PATH", agent_runtime_path.to_string_lossy().as_ref());
     let (mut events, child) = command
         .spawn()
         .map_err(|error| format!("Could not start AI runtime: {error}"))?;

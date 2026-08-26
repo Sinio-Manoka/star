@@ -58,10 +58,20 @@ const mapThread = (row: ThreadRow): ProjectThread => ({
 export class SqliteProjectRepository implements ProjectRepository {
   private db?: Database;
   private initialization?: Promise<void>;
+  private writeQueue: Promise<void> = Promise.resolve();
 
   private get database() {
     if (!this.db) throw new Error("Project database has not been initialized");
     return this.db;
+  }
+
+  private enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.writeQueue.then(operation, operation);
+    this.writeQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   async initialize() {
@@ -184,17 +194,21 @@ export class SqliteProjectRepository implements ProjectRepository {
   }
 
   async saveThreadMessages(threadId: string, messages: unknown[]) {
-    const now = new Date().toISOString();
-    await this.database.execute(
-      `INSERT INTO project_thread_messages (thread_id, messages_json, updated_at) VALUES ($1, $2, $3)
-       ON CONFLICT(thread_id) DO UPDATE SET messages_json = excluded.messages_json, updated_at = excluded.updated_at`,
-      [threadId, JSON.stringify(messages), now],
-    );
-    await this.database.execute("UPDATE project_threads SET updated_at = $1 WHERE id = $2", [now, threadId]);
+    await this.enqueueWrite(async () => {
+      const now = new Date().toISOString();
+      await this.database.execute(
+        `INSERT INTO project_thread_messages (thread_id, messages_json, updated_at) VALUES ($1, $2, $3)
+         ON CONFLICT(thread_id) DO UPDATE SET messages_json = excluded.messages_json, updated_at = excluded.updated_at`,
+        [threadId, JSON.stringify(messages), now],
+      );
+      await this.database.execute("UPDATE project_threads SET updated_at = $1 WHERE id = $2", [now, threadId]);
+    });
   }
 
   async renameThread(threadId: string, title: string) {
-    await this.database.execute("UPDATE project_threads SET title = $1, updated_at = $2 WHERE id = $3", [title, new Date().toISOString(), threadId]);
+    await this.enqueueWrite(async () => {
+      await this.database.execute("UPDATE project_threads SET title = $1, updated_at = $2 WHERE id = $3", [title, new Date().toISOString(), threadId]);
+    });
   }
 
   async setThreadStatus(threadId: string, status: ProjectThread["status"]) {
