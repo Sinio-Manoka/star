@@ -1,0 +1,35 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { SpeakerIdentity } from "@/components/speaker-identity";
+
+describe("SpeakerIdentity", () => {
+  it("renders every supported speaker kind with semantic styling", () => {
+    const markup = renderToStaticMarkup(
+      <SpeakerIdentity
+        turns={[
+          { id: "user", kind: "user", name: "You", text: "Question" },
+          { id: "agent", kind: "agent", name: "MiniMax", detail: "minimax-m3" },
+          { id: "subagent", kind: "subagent", name: "Reviewer" },
+          { id: "tool", kind: "tool", name: "Search", text: "src" },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain('data-speaker-kind="user"');
+    expect(markup).toContain('data-speaker-kind="agent"');
+    expect(markup).toContain('data-speaker-kind="subagent"');
+    expect(markup).toContain('data-speaker-kind="tool"');
+    expect(markup).toContain("MiniMax");
+    expect(markup).toContain("minimax-m3");
+    expect(markup).toContain("--status-running");
+  });
+
+  it("supports an identity-only row without an empty text node", () => {
+    const markup = renderToStaticMarkup(
+      <SpeakerIdentity turns={[{ id: "agent", kind: "agent", name: "Assistant" }]} />,
+    );
+
+    expect(markup).toContain("Assistant");
+    expect(markup).not.toContain("text-[13.5px]");
+  });
+});

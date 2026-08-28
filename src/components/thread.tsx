@@ -10,6 +10,7 @@ import { ThreadFollowupSuggestions } from "@/components/follow-up-suggestions";
 import { Image } from "@/components/image";
 import { MarkdownText } from "@/components/markdown-text";
 import { MessageTiming } from "@/components/message-timing";
+import { SpeakerIdentity } from "@/components/speaker-identity";
 import {
   formatElapsedSeconds,
   formatThinkingToolName,
@@ -522,6 +523,36 @@ const AssistantThinking: FC = () => {
   );
 };
 
+function customMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+) {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+const AssistantSpeakerIdentity: FC = () => {
+  const speaker = useAuiState((state) => {
+    const metadata = state.message.metadata.custom as
+      | Record<string, unknown>
+      | undefined;
+    return {
+      id: state.message.id,
+      kind: "agent" as const,
+      name: customMetadataString(metadata, "agentName") ?? "Assistant",
+      detail: customMetadataString(metadata, "model"),
+    };
+  });
+
+  return (
+    <SpeakerIdentity
+      aria-label={`Speaker: ${speaker.name}${speaker.detail ? `, ${speaker.detail}` : ""}`}
+      turns={[speaker]}
+      className="mb-2 px-2"
+    />
+  );
+};
+
 const AssistantMessage: FC = () => {
   const {
     ToolFallback: ToolFallbackComponent = ToolFallback,
@@ -543,6 +574,7 @@ const AssistantMessage: FC = () => {
         data-slot="aui_assistant-message-content"
         className="text-foreground px-2 leading-relaxed wrap-break-word"
       >
+        <AssistantSpeakerIdentity />
         <MessagePrimitive.GroupedParts
           groupBy={groupPartByType({
             reasoning: ["group-chainOfThought", "group-reasoning"],

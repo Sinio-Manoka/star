@@ -5,6 +5,7 @@ import { frontendTools, injectQuoteContext } from "@assistant-ui/ai-sdk";
 import { createProjectTools, projectAgentInstructions } from "@star/project-agent";
 import { AgentRuntime, AgentRuntimeConflictError } from "@star/agent-runtime/server";
 import { acpModels, closeAcpSessions, resolveAcpPermission, runAcpTurn } from "./acp.mjs";
+import { createSpeakerMetadata } from "./speaker-metadata.mjs";
 import {
   assertConnectionReady,
   createProviderModel,
@@ -79,7 +80,17 @@ async function handleChat(request, response) {
       if (isAgentKind(connection.kind)) {
         const stream = createUIMessageStream({
           originalMessages: body.messages,
-          execute: ({ writer }) => runAcpTurn({ connection, cwd: body.projectPath, threadId: sessionId, model: body.modelId, messages, writer, lifecycle, agentConfig }),
+          execute: ({ writer }) => runAcpTurn({
+            connection,
+            cwd: body.projectPath,
+            threadId: sessionId,
+            model: body.modelId,
+            messages,
+            writer,
+            lifecycle,
+            agentConfig,
+            messageMetadata: createSpeakerMetadata(connection, body.modelId),
+          }),
           onError: (error) => error instanceof Error ? error.message : String(error),
         });
         return createUIMessageStreamResponse({ stream });
@@ -107,6 +118,9 @@ async function handleChat(request, response) {
       return result.toUIMessageStreamResponse({
         originalMessages: body.messages,
         onError: reportProviderError,
+        messageMetadata: ({ part }) => part.type === "start"
+          ? createSpeakerMetadata(connection, body.modelId)
+          : undefined,
       });
     });
     await sendWebResponse(webResponse, response);

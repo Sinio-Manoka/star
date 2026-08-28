@@ -159,7 +159,17 @@ function writeUpdate(record, update, state) {
   } else if (update.sessionUpdate === "config_option_update") record.configOptions = update.configOptions;
 }
 
-export async function runAcpTurn({ connection, cwd, threadId, model, messages, writer, lifecycle, agentConfig }) {
+export async function runAcpTurn({
+  connection,
+  cwd,
+  threadId,
+  model,
+  messages,
+  writer,
+  lifecycle,
+  agentConfig,
+  messageMetadata,
+}) {
   if (!cwd) throw new Error("Select a project before starting a coding agent.");
   const record = await getRecord(connection, cwd, threadId || "draft");
   if (record.writer) throw new Error("This coding-agent conversation is already running.");
@@ -184,7 +194,7 @@ export async function runAcpTurn({ connection, cwd, threadId, model, messages, w
     void record.context.notify(acp.methods.agent.session.cancel, { sessionId: record.session.sessionId });
   };
   lifecycle?.signal.addEventListener("abort", cancel, { once: true });
-  writer.write({ type: "start" });
+  writer.write({ type: "start", messageMetadata });
   writer.write({ type: "start-step" });
   try {
     void record.session.prompt(prompt);
