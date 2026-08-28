@@ -404,9 +404,9 @@ const ComposerAction: FC<{ projectPicker?: ReactNode; modelPicker?: ReactNode; a
         <ComposerAddAttachment />
         {projectPicker}
         {modelPicker}
-        {agentControls}
       </div>
       <div className="flex items-center gap-1.5">
+        {agentControls}
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
             <ComposerPrimitive.Dictate render={<TooltipIconButton tooltip="Record voice" side="bottom" type="button" variant="ghost" size="icon-xs" className="aui-composer-dictate text-muted-foreground hover:text-foreground rounded-full" aria-label="Start voice recording" />}><MicIcon className="aui-composer-dictate-icon" /></ComposerPrimitive.Dictate>

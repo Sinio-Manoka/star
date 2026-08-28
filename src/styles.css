@@ -46,8 +46,6 @@
 
   /* Active conversation bar — uses the theme accent. */
   --conversation-active: var(--primary);
-  --agent-mode-active: var(--primary);
-  --agent-mode-active-foreground: var(--primary-foreground);
 
   /* Runtime status and window-control colors remain overridable per theme. */
   --status-running: var(--chart-1);
