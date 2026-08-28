@@ -33,6 +33,7 @@ import {
 } from "@/components/tool-group";
 import { TooltipIconButton } from "@/components/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ProjectMentionPicker } from "@/features/projects/ProjectMentionPicker";
@@ -56,6 +57,10 @@ import {
   useAui,
   useAuiState,
 } from "@assistant-ui/react";
+import {
+  LexicalComposerInput,
+  type DirectiveChipProps,
+} from "@assistant-ui/react-lexical";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -378,6 +383,26 @@ const SlashCommands: FC<{ threadId?: string; onNewSession?: () => void; onCompac
   return <ComposerTriggerPopover char="/" {...slash} />;
 };
 
+const ProjectDirectiveChip: FC<DirectiveChipProps> = ({
+  directiveId,
+  directiveType,
+  label,
+}) => {
+  const Icon = directiveType === "folder" ? FolderIcon : FileIcon;
+  return (
+    <Badge
+      variant="secondary"
+      data-directive-id={directiveId}
+      data-directive-type={directiveType}
+      aria-label={`${directiveType}: ${directiveId}`}
+      className="aui-directive-chip mx-0.5 align-baseline"
+    >
+      <Icon />
+      {label}
+    </Badge>
+  );
+};
+
 const Composer: FC<{ threadId?: string; projectPath?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({ threadId, projectPath, projectPicker, modelPicker, agentControls, onNewSession, onCompactSession }) => {
   return (
     <ComposerPrimitive.Unstable_TriggerPopoverRoot>
@@ -391,12 +416,11 @@ const Composer: FC<{ threadId?: string; projectPath?: string; projectPicker?: Re
                           <span className="shrink-0 text-foreground">Listening</span>
                           <ComposerPrimitive.DictationTranscript className="truncate" />
                         </div>
-                      </AuiIf><ComposerPrimitive.Input
+                      </AuiIf><LexicalComposerInput
                       placeholder="Send a message..."
-                      className="aui-composer-input caret-primary placeholder:text-muted-foreground/60 max-h-60 min-h-12 w-full resize-none bg-transparent px-2 py-2 text-[15px] leading-6 outline-none"
-                      rows={1}
+                      className="aui-composer-input caret-primary relative max-h-60 min-h-12 w-full cursor-text bg-transparent px-2 py-2 text-[15px] leading-6 outline-none [&_.aui-lexical-input]:min-h-8 [&_.aui-lexical-input]:outline-none [&_.aui-lexical-placeholder]:pointer-events-none [&_.aui-lexical-placeholder]:absolute [&_.aui-lexical-placeholder]:inset-x-2 [&_.aui-lexical-placeholder]:top-2 [&_.aui-lexical-placeholder]:text-muted-foreground/60"
                       autoFocus
-                      enterKeyHint="send"
+                      directiveChip={ProjectDirectiveChip}
                       aria-label="Message input"
                     /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} /></ComposerPrimitive.AttachmentDropzone>
         <SlashCommands threadId={threadId} onNewSession={onNewSession} onCompactSession={onCompactSession} />
