@@ -192,6 +192,7 @@ function ProjectAssistantRuntime({
     <AssistantRuntimeProvider runtime={runtime}>
       <Thread
         threadId={threadId}
+        projectPath={projectPath}
         modelPicker={<ComposerModelPicker projectPath={projectPath} />}
         agentControls={threadId ? <AgentControls threadId={threadId} /> : undefined}
         onNewSession={() => { void createThread(); }}

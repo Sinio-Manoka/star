@@ -140,6 +140,7 @@ export function projectAgentInstructions(projectName, config = {}) {
     ...modeInstructions,
     thinkingInstruction,
     "Use the project tools to inspect real files before making claims or proposing edits.",
+    "Treat :file[label]{name=path} and :folder[label]{name=path} directives as explicit project-relative references. Inspect those paths first and keep work focused on them unless the request requires broader context.",
     "Paths passed to tools must be relative to the project root.",
     "Prefer targeted replacements over rewriting whole files. Re-read relevant code before changing it.",
     "Respect the configured permission policy. When approval is required, explain the purpose in the tool's reason argument.",

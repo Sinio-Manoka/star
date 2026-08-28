@@ -1,0 +1,30 @@
+"use client";
+
+import { memo } from "react";
+import type {
+  TextMessagePartComponent,
+  Unstable_DirectiveFormatter,
+} from "@assistant-ui/react";
+import { unstable_defaultDirectiveFormatter } from "@assistant-ui/react";
+import {
+  createDirectiveText as createDirectiveTextBase,
+  type CreateDirectiveTextOptions,
+} from "./directive-text";
+
+export type {
+  CreateDirectiveTextOptions,
+  DirectiveTextFormatter,
+  DirectiveTextSegment,
+} from "./directive-text";
+
+/** Creates a Text message part component that renders directive syntax as chips. */
+export function createDirectiveText(
+  formatter: Unstable_DirectiveFormatter,
+  options?: CreateDirectiveTextOptions,
+): TextMessagePartComponent {
+  return createDirectiveTextBase(formatter, options);
+}
+
+export const DirectiveText: TextMessagePartComponent = memo(
+  createDirectiveTextBase(unstable_defaultDirectiveFormatter),
+);

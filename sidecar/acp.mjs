@@ -171,7 +171,8 @@ export async function runAcpTurn({ connection, cwd, threadId, model, messages, w
   const modePrompt = agentConfig?.mode === "plan"
     ? "[Star Plan mode: inspect and plan only. Do not modify files or run mutating commands. End with a concrete implementation plan.]"
     : "[Star Build mode: implement the request and verify the result.]";
-  const prompt = `${modePrompt}\n\n${userPrompt}`;
+  const referencePrompt = "[Star project references: :file[label]{name=path} and :folder[label]{name=path} identify project-relative paths. Inspect referenced paths first.]";
+  const prompt = `${modePrompt}\n${referencePrompt}\n\n${userPrompt}`;
   if (!prompt) throw new Error("The coding agent needs a text prompt.");
   const state = { textId: `acp-text-${randomUUID()}`, reasoningId: `acp-reasoning-${randomUUID()}`, textOpen: false, reasoningOpen: false, tools: new Map() };
   record.writer = writer;

@@ -10,6 +10,7 @@ import { ThreadFollowupSuggestions } from "@/components/follow-up-suggestions";
 import { Image } from "@/components/image";
 import { MarkdownText } from "@/components/markdown-text";
 import { MessageTiming } from "@/components/message-timing";
+import { createDirectiveText } from "@/components/directive-text.aui";
 import {
   ComposerQuotePreview,
   QuoteBlock,
@@ -34,6 +35,7 @@ import { TooltipIconButton } from "@/components/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ProjectMentionPicker } from "@/features/projects/ProjectMentionPicker";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -50,6 +52,7 @@ import {
   type ImageMessagePartComponent,
   type ToolCallMessagePartComponent,
   type Unstable_TriggerItem,
+  unstable_defaultDirectiveFormatter,
   useAui,
   useAuiState,
 } from "@assistant-ui/react";
@@ -63,6 +66,8 @@ import {
   CopyIcon,
   DownloadIcon,
   FileSearchIcon,
+  FileIcon,
+  FolderIcon,
   HammerIcon,
   ListChecksIcon,
   MessageSquarePlusIcon,
@@ -111,6 +116,7 @@ export type ThreadComponents = {
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
   threadId?: string;
+  projectPath?: string;
   projectPicker?: ReactNode;
   modelPicker?: ReactNode;
   agentControls?: ReactNode;
@@ -160,6 +166,7 @@ const ThreadHistorySkeleton: FC = () => (
 export const Thread: FC<ThreadProps> = ({
   components = EMPTY_COMPONENTS,
   threadId,
+  projectPath,
   projectPicker,
   modelPicker,
   agentControls,
@@ -170,14 +177,15 @@ export const Thread: FC<ThreadProps> = ({
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
+      <ThreadRoot isEmpty={isEmpty} threadId={threadId} projectPath={projectPath} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
     </ThreadComponentsContext.Provider>
   );
 };
 
-const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({
+const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPath?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({
   isEmpty,
   threadId,
+  projectPath,
   projectPicker,
   modelPicker,
   agentControls,
@@ -234,7 +242,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; threadId?: string; projectPicker?: Reac
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
             <PendingToolApprovalDock threadId={threadId} />
-            <Composer threadId={threadId} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
+            <Composer threadId={threadId} projectPath={projectPath} projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} onNewSession={onNewSession} onCompactSession={onCompactSession} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>
@@ -370,7 +378,7 @@ const SlashCommands: FC<{ threadId?: string; onNewSession?: () => void; onCompac
   return <ComposerTriggerPopover char="/" {...slash} />;
 };
 
-const Composer: FC<{ threadId?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({ threadId, projectPicker, modelPicker, agentControls, onNewSession, onCompactSession }) => {
+const Composer: FC<{ threadId?: string; projectPath?: string; projectPicker?: ReactNode; modelPicker?: ReactNode; agentControls?: ReactNode; onNewSession?: () => void; onCompactSession?: () => void }> = ({ threadId, projectPath, projectPicker, modelPicker, agentControls, onNewSession, onCompactSession }) => {
   return (
     <ComposerPrimitive.Unstable_TriggerPopoverRoot>
       <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
@@ -392,6 +400,7 @@ const Composer: FC<{ threadId?: string; projectPicker?: ReactNode; modelPicker?:
                       aria-label="Message input"
                     /><ComposerAction projectPicker={projectPicker} modelPicker={modelPicker} agentControls={agentControls} /></ComposerPrimitive.AttachmentDropzone>
         <SlashCommands threadId={threadId} onNewSession={onNewSession} onCompactSession={onCompactSession} />
+        <ProjectMentionPicker projectPath={projectPath} />
       </ComposerPrimitive.Root>
     </ComposerPrimitive.Unstable_TriggerPopoverRoot>
   );
@@ -590,6 +599,11 @@ const UserImagePart: ImageMessagePartComponent = (part) => (
   </div>
 );
 
+const ProjectDirectiveText = createDirectiveText(
+  unstable_defaultDirectiveFormatter,
+  { iconMap: { file: FileIcon, folder: FolderIcon } },
+);
+
 const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
@@ -605,7 +619,7 @@ const UserMessage: FC = () => {
             {(quote) => <QuoteBlock {...quote} />}
           </MessagePrimitive.Quote>
           <MessagePrimitive.Parts
-            components={{ File: UserFilePart, Image: UserImagePart }}
+            components={{ Text: ProjectDirectiveText, File: UserFilePart, Image: UserImagePart }}
           />
         </div>
         <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">

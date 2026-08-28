@@ -44,6 +44,7 @@ describe("project agent tools", () => {
     expect(tools.run_project_command.needsApproval).toBe(true);
     expect(tools.request_mode_change.needsApproval).toBe(true);
     expect(projectAgentInstructions("Demo")).toContain("coding agent");
+    expect(projectAgentInstructions("Demo")).toContain(":file[label]{name=path}");
   });
 
   it("makes Plan mode read-only and guides the agent toward an approved Build transition", () => {
