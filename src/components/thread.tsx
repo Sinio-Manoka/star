@@ -532,22 +532,31 @@ function customMetadataString(
 }
 
 const AssistantSpeakerIdentity: FC = () => {
-  const speaker = useAuiState((state) => {
+  const messageId = useAuiState((state) => state.message.id);
+  const agentName = useAuiState((state) => {
     const metadata = state.message.metadata.custom as
       | Record<string, unknown>
       | undefined;
-    return {
-      id: state.message.id,
-      kind: "agent" as const,
-      name: customMetadataString(metadata, "agentName") ?? "Assistant",
-      detail: customMetadataString(metadata, "model"),
-    };
+    return customMetadataString(metadata, "agentName") ?? "Assistant";
+  });
+  const model = useAuiState((state) => {
+    const metadata = state.message.metadata.custom as
+      | Record<string, unknown>
+      | undefined;
+    return customMetadataString(metadata, "model");
   });
 
   return (
     <SpeakerIdentity
-      aria-label={`Speaker: ${speaker.name}${speaker.detail ? `, ${speaker.detail}` : ""}`}
-      turns={[speaker]}
+      aria-label={`Speaker: ${agentName}${model ? `, ${model}` : ""}`}
+      turns={[
+        {
+          id: messageId,
+          kind: "agent",
+          name: agentName,
+          detail: model,
+        },
+      ]}
       className="mb-2 px-2"
     />
   );
