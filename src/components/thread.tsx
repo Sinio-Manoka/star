@@ -10,6 +10,11 @@ import { ThreadFollowupSuggestions } from "@/components/follow-up-suggestions";
 import { Image } from "@/components/image";
 import { MarkdownText } from "@/components/markdown-text";
 import { MessageTiming } from "@/components/message-timing";
+import {
+  formatElapsedSeconds,
+  formatThinkingToolName,
+  ThinkingIndicator,
+} from "@/components/thinking-indicator";
 import { createDirectiveText } from "@/components/directive-text.aui";
 import {
   ComposerQuotePreview,
@@ -88,8 +93,10 @@ import {
 } from "lucide-react";
 import {
   createContext,
+  useEffect,
   useContext,
   useMemo,
+  useState,
   type ComponentType,
   type FC,
   type PropsWithChildren,
@@ -469,6 +476,52 @@ const MessageError: FC = () => {
   );
 };
 
+function useThinkingLabel() {
+  return useAuiState((state) => {
+    if (state.message.status?.type !== "running") return undefined;
+    const pending = state.message.parts.find(
+      (part) => part.type === "tool-call" && part.result === undefined,
+    );
+    if (pending?.type === "tool-call") {
+      return `Running ${formatThinkingToolName(pending.toolName)}`;
+    }
+    return state.message.parts.length === 0 ? "Thinking" : undefined;
+  });
+}
+
+function useElapsedLabel(active: boolean) {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setSeconds(0);
+      return undefined;
+    }
+    const startedAt = Date.now();
+    setSeconds(0);
+    const timer = window.setInterval(() => {
+      setSeconds(Math.floor((Date.now() - startedAt) / 1_000));
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  return active ? formatElapsedSeconds(seconds) : undefined;
+}
+
+const AssistantThinking: FC = () => {
+  const label = useThinkingLabel();
+  const elapsed = useElapsedLabel(label !== undefined);
+  if (label === undefined) return null;
+
+  return (
+    <ThinkingIndicator
+      label={label}
+      elapsed={elapsed}
+      className="px-2 py-1"
+    />
+  );
+};
+
 const AssistantMessage: FC = () => {
   const {
     ToolFallback: ToolFallbackComponent = ToolFallback,
@@ -567,6 +620,7 @@ const AssistantMessage: FC = () => {
             }
           }}
         </MessagePrimitive.GroupedParts>
+        <AssistantThinking />
         <MessageError />
       </div>
 
