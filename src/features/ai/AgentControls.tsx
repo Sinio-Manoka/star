@@ -17,7 +17,7 @@ export function AgentControls({ threadId }: { threadId: string }) {
       type="button"
       size="icon-xs"
       tooltip={`${modeLabel} · switch to ${nextModeLabel}`}
-      className="bg-muted text-primary hover:bg-muted hover:text-primary rounded-full"
+      className="bg-muted text-primary hover:bg-muted hover:text-primary cursor-pointer rounded-full"
       aria-label={`${modeLabel}. Switch to ${nextModeLabel} mode`}
       onClick={() => setAgentConfig(threadId, { mode: isBuild ? "plan" : "build" })}
     >
